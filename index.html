@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Генератор математических тестов</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --primary: #4a90e2;
+            --primary-hover: #357abd;
+            --success: #2ecc71;
+            --text: #2c3e50;
+            --border: #dcdde1;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 600px;
+            padding: 30px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            text-align: center;
+            margin-top: 0;
+            color: var(--primary);
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-weight: 600;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button.secondary {
+            background-color: #95a5a6;
+        }
+
+        button.secondary:hover {
+            background-color: #7f8c8d;
+        }
+
+        .setting-item {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .setting-item label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .checkbox-group label {
+            font-weight: normal;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+        }
+
+        .fraction {
+            display: inline-flex;
+            flex-direction: column;
+            vertical-align: middle;
+            text-align: center;
+            padding: 0 4px;
+        }
+
+        .numerator {
+            border-bottom: 2px solid var(--text);
+            padding-bottom: 2px;
+        }
+
+        .denominator {
+            padding-top: 2px;
+        }
+
+        .math-expr {
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            margin: 30px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .answer-block {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .answer-block input {
+            width: 80px;
+            padding: 10px;
+            font-size: 18px;
+            text-align: center;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+        }
+
+        .answer-block input:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+
+        .score-board {
+            text-align: center;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        .feedback {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            min-height: 27px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- ТИТУЛЬНЫЙ ЭКРАН -->
+        <div id="screen-main" class="screen active">
+            <h1>Математический Тренажер</h1>
+            <p style="text-align: center; color: #7f8c8d;">Проверь свои знания и навыки в решении случайных примеров!</p>
+            <div class="btn-group">
+                <button onclick="switchScreen('screen-quiz'); startQuiz();">Решать тест</button>
+                <button class="secondary" onclick="switchScreen('screen-settings')">Настройки темы</button>
+            </div>
+        </div>
+        <!-- ЭКРАН НАСТРОЕК -->
+        <div id="screen-settings" class="screen">
+            <h1>Настройки Теста</h1>
+            
+            <div class="setting-item">
+                <label>Тип чисел:</label>
+                <div class="checkbox-group">
+                    <label><input type="radio" name="num-type" value="integers" checked> Целые числа</label>
+                    <label><input type="radio" name="num-type" value="fractions"> Обыкновенные дроби</label>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <label>Доступные операции:</label>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="op-add" checked> Сложение (+)</label>
+                    <label><input type="checkbox" id="op-sub" checked> Вычитание (-)</label>
+                    <label><input type="checkbox" id="op-mul"> Умножение (*)</label>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button onclick="switchScreen('screen-main')">Сохранить и вернуться</button>
+            </div>
+        </div>
+
+        <!-- ЭКРАН РЕШЕНИЯ ТЕСТА -->
+        <div id="screen-quiz" class="screen">
+            <h1>Решение Теста</h1>
+            <div class="score-board">Решено верно: <span id="score-count">0</span></div>
+            
+            <!-- Место вывода сгенерированного примера -->
+            <div id="math-question" class="math-expr"></div>
+
+            <!-- Блок ввода ответов -->
+            <div id="input-container" class="answer-block"></div>
+
+            <div class="feedback" id="feedback-message"></div>
+
+            <div class="btn-group">
+                <button id="btn-action" onclick="checkAnswer()">Проверить ответ</button>
+                <button class="secondary" onclick="switchScreen('screen-main')">Закончить тест</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentAnswer = {};
+        let score = 0;
+        let isAnswerChecked = false;
+
+        function switchScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function getRandomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function startQuiz() {
+            score = 0;
+            document.getElementById('score-count').innerText = score;
+            generateProblem();
+        }
+
+        function generateProblem() {
+            isAnswerChecked = false;
+            document.getElementById('feedback-message').innerText = '';
+            document.getElementById('feedback-message').style.color = 'black';
+            document.getElementById('btn-action').innerText = 'Проверить ответ';
+
+            const numType = document.querySelector('input[name="num-type"]:checked').value;
+            
+            // Собираем выбранные операции
+            let ops = [];
+            if(document.getElementById('op-add').checked) ops.push('+');
+            if(document.getElementById('op-sub').checked) ops.push('-');
+            if(document.getElementById('op-mul').checked) ops.push('*');
+            
+            if(ops.length === 0) ops = ['+']; // Защита от пустых чекбоксов
+            const operation = ops[Math.floor(Math.random() * ops.length)];
+
+            const qContainer = document.getElementById('math-question');
+            const iContainer = document.getElementById('input-container');
+            qContainer.innerHTML = '';
+            iContainer.innerHTML = '';
+
+            if (numType === 'integers') {
+                // Генерация целых чисел
+                let n1 = getRandomInt(1, 20);
+                let n2 = getRandomInt(1, 20);
+                if (operation === '-' && n1 < n2) { [n1, n2] = [n2, n1]; } // Чтобы не было отрицательных для простоты
+
+                qContainer.innerHTML = `${n1} ${operation === '*' ? '×' : operation} ${n2} =`;
+                iContainer.innerHTML = `<input type="number" id="ans-int" placeholder="?">`;
+
+                let correct;
+                if(operation === '+') correct = n1 + n2;
+                if(operation === '-') correct = n1 - n2;
+                if(operation === '*') correct = n1 * n2;
+
+                currentAnswer = { type: 'int', val: correct };
+
+            } else {
+                // Генерация обыкновенных дробей
+                let num1 = getRandomInt(1, 5);
+                let den1 = getRandomInt(2, 6);
+                let num2 = getRandomInt(1, 5);
+                let den2 = getRandomInt(2, 6);
+
+                // Ограничение для вычитания дробей, чтобы результат был > 0
+                if (operation === '-' && (num1/den1 < num2/den2)) {
+                    [num1, num2] = [num2, num1];
+                    [den1, den2] = [den2, den1];
+                }
+
+                qContainer.innerHTML = `
+                    <div class="fraction"><span class="numerator">${num1}</span><span class="denominator">${den1}</span></div>
+                    <span>${operation === '*' ? '×' : operation}</span>
+                    <div class="fraction"><span class="numerator">${num2}</span><span class="denominator">${den2}</span></div>
+                    <span>=</span>
+                `;
+
+                iContainer.innerHTML = `
+                    <div class="fraction">
+                        <input type="number" id="ans-num" placeholder="Числитель" required>
+                        <span style="border-bottom: 2px solid var(--text); width: 100%; margin: 4px 0;"></span>
+                        <input type="number" id="ans-den" placeholder="Знаменатель" required>
+                    </div>
+                `;
+
+                let resNum, resDen;
+                if (operation === '+') {
+                    resNum = num1 * den2 + num2 * den1;
+                    resDen = den1 * den2;
+                } else if (operation === '-') {
+                    resNum = num1 * den2 - num2 * den1;
+                    resDen = den1 * den2;
+                } else if (operation === '*') {
+                    resNum = num1 * num2;
+                    resDen = den1 * den2;
+                }
+
+                currentAnswer = { type: 'frac', num: resNum, den: resDen };
+            }
+        }
+
+        function checkAnswer() {
+            if (isAnswerChecked) {
+                generateProblem();
+                return;
+            }
+
+            let isCorrect = false;
+            const feedback = document.getElementById('feedback-message');
+
+            if (currentAnswer.type === 'int') {
+                const userAns = parseInt(document.getElementById('ans-int').value);
+                if (userAns === currentAnswer.val) isCorrect = true;
+            } else {
+                const userNum = parseInt(document.getElementById('ans-num').value);
+                const userDen = parseInt(document.getElementById('ans-den').value);
+                
+                // Проверка математического равенства дробей (перекрестное умножение)
+                if (userNum * currentAnswer.den === currentAnswer.num * userDen && userDen !== 0) {
+                    isCorrect = true;
+                }
+            }
+
+            if (isCorrect) {
+                feedback.innerText = "Правильно! 🎉";
+                feedback.style.color = "var(--success)";
+                score++;
+                document.getElementById('score-count').innerText = score;
+            } else {
+                let correctStr = currentAnswer.type === 'int' ? currentAnswer.val : `${currentAnswer.num}/${currentAnswer.den}`;
+                feedback.innerText = `Ошибка! Правильный ответ: ${correctStr}`;
+                feedback.style.color = "#e74c3c";
+            }
+
+            document.getElementById('btn-action').innerText = 'Следующий пример';
+            isAnswerChecked = true;
+        }
+    </script>
+</body>
+</html>
