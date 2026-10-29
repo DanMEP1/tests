@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мега-Генератор Тестов Мульти-Темы</title>
+    <title>Тестирование</title>
     <style>
         :root {
             --bg-color: #f0f3f6;
@@ -151,7 +151,7 @@
             font-size: 24px;
         }
         .math-expr {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: bold;
             text-align: center;
             margin: 35px 0;
@@ -169,7 +169,7 @@
             margin-bottom: 25px;
         }
         .answer-block input {
-            width: 130px;
+            width: 140px;
             padding: 12px;
             font-size: 20px;
             text-align: center;
@@ -240,6 +240,13 @@
                     <label><input type="checkbox" class="theme-cb" value="cubes"> 🧊 Кубы чисел</label>
                     <label><input type="checkbox" class="theme-cb" value="area"> 🔲 Площадь фигур</label>
                     <label><input type="checkbox" class="theme-cb" value="compare"> 🎲 Сравнение чисел (&lt;, &gt;, =)</label>
+                    <label><input type="checkbox" class="theme-cb" value="oge"> 📋 Задания ОГЭ (Облегченные)</label>
+                    <label><input type="checkbox" class="theme-cb" value="average"> 📈 Среднее арифметическое</label>
+                    <label><input type="checkbox" class="theme-cb" value="round"> 🔄 Округление чисел</label>
+                    <label><input type="checkbox" class="theme-cb" value="powers"> 🔋 Свойства степеней (ОГЭ)</label>
+                    <label><input type="checkbox" class="theme-cb" value="probability"> 🎲 Простые вероятности</label>
+                    <label><input type="checkbox" class="theme-cb" value="gcdlcm"> 🧬 Поиск НОД и НОК</label>
+                    <label><input type="checkbox" class="theme-cb" value="angles"> 📐 Градусы и углы</label>
                 </div>
             </div>
             <div class="setting-item">
@@ -330,6 +337,9 @@
         function gcd(a, b) {
             return b ? gcd(b, a % b) : Math.abs(a);
         }
+        function findLCM(a, b) {
+            return (a * b) / gcd(a, b);
+        }
         function exitQuiz() {
             const code = prompt("Введите секретный код для выхода на главную:");
             if (code === "1706") {
@@ -403,6 +413,7 @@
             isAnswerChecked = false;
             document.getElementById('feedback-message').innerText = '';
             document.getElementById('btn-action').innerText = 'Проверить ответ';
+            
             let checkedThemes = [];
             document.querySelectorAll('.theme-cb:checked').forEach(cb => checkedThemes.push(cb.value));
             if (checkedThemes.length === 0) checkedThemes = ['integers'];
@@ -513,6 +524,82 @@
                 let ans = n1 > n2 ? '>' : n1 < n2 ? '<' : '=';
                 currentAnswer = { type: 'text', val: ans };
             }
+            else if (theme === 'oge') {
+                let mode = getRandomInt(1, 2);
+                if (mode === 1) {
+                    let mult = getRandomInt(2, 6), den1 = getRandomInt(2, 4), num1 = 1;
+                    let den2 = den1 * mult, num2 = getRandomInt(1, 3), ext = den2;
+                    qContainer.innerHTML = `( <div class="fraction"><span class="numerator">${num1}</span><span class="denominator">${den1}</span></div> + <div class="fraction"><span class="numerator">${num2}</span><span class="denominator">${den2}</span></div> ) × ${ext} =`;
+                    let ans = ((num1 * mult + num2) / den2) * ext;
+                    iContainer.innerHTML = `<input type="number" id="ans-single" placeholder="?">`;
+                    currentAnswer = { type: 'single', val: Math.round(ans) };
+                } else {
+                    let d1 = (getRandomInt(11, 39) / 10), d2 = getRandomInt(2, 5), d3 = (getRandomInt(10, 49) / 10);
+                    qContainer.innerHTML = `${d1.toFixed(1)} × ${d2} + ${d3.toFixed(1)} =`;
+                    let ans = d1 * d2 + d3;
+                    iContainer.innerHTML = `<input type="number" step="0.1" id="ans-single" placeholder="?">`;
+                    currentAnswer = { type: 'single', val: parseFloat(ans.toFixed(1)) };
+                }
+            }
+            else if (theme === 'average') {
+                let count = getRandomInt(2, diff === 'easy' ? 2 : 3);
+                let n1 = getRandomInt(2, maxRange), n2 = getRandomInt(2, maxRange), n3 = getRandomInt(2, maxRange);
+                if (count === 2) {
+                    if ((n1 + n2) % 2 !== 0) n1++;
+                    qContainer.innerHTML = `Среднее арифм. чисел ${n1} и ${n2} =`;
+                    currentAnswer = { type: 'single', val: (n1 + n2) / 2 };
+                } else {
+                    while ((n1 + n2 + n3) % 3 !== 0) n1++;
+                    qContainer.innerHTML = `Среднее арифм. чисел ${n1}, ${n2} и ${n3} =`;
+                    currentAnswer = { type: 'single', val: (n1 + n2 + n3) / 3 };
+                }
+                iContainer.innerHTML = `<input type="number" id="ans-single" placeholder="?">`;
+            }
+            else if (theme === 'round') {
+                let num = getRandomInt(105, 995) / 100;
+                let mode = getRandomInt(1, 2);
+                if (mode === 1) {
+                    qContainer.innerHTML = `Округлите ${num.toFixed(2)} до целых =`;
+                    currentAnswer = { type: 'single', val: Math.round(num) };
+                } else {
+                    qContainer.innerHTML = `Округлите ${num.toFixed(2)} до десятых =`;
+                    currentAnswer = { type: 'single', val: parseFloat(num.toFixed(1)) };
+                }
+                iContainer.innerHTML = `<input type="number" step="0.1" id="ans-single" placeholder="?">`;
+            }
+            else if (theme === 'powers') {
+                let base = getRandomInt(2, 5);
+                let p1 = getRandomInt(3, 6), p2 = getRandomInt(2, 4), p3 = getRandomInt(3, p1 + p2 - 1);
+                qContainer.innerHTML = `<div class="fraction"><span class="numerator">${base}<sup>${p1}</sup> × ${base}<sup>${p2}</sup></span><span class="denominator">${base}<sup>${p3}</sup></span></div> =`;
+                iContainer.innerHTML = `<input type="number" id="ans-single" placeholder="?">`;
+                currentAnswer = { type: 'single', val: Math.pow(base, (p1 + p2 - p3)) };
+            }
+            else if (theme === 'probability') {
+                let total = diff === 'easy' ? 4 : diff === 'medium' ? 20 : 50;
+                let favorable = getRandomInt(1, total - 1);
+                qContainer.innerHTML = `В коробке ${total} шаров, из них ${favorable} красных. Какова вероятность вытащить красный шар? (в виде дес. дроби)`;
+                iContainer.innerHTML = `<input type="number" step="0.01" id="ans-single" placeholder="?">`;
+                currentAnswer = { type: 'single', val: parseFloat((favorable / total).toFixed(2)) };
+            }
+            else if (theme === 'gcdlcm') {
+                let mode = getRandomInt(1, 2);
+                let n1 = getRandomInt(4, 15) * 2, n2 = getRandomInt(4, 15) * 2;
+                while(n1 === n2) { n2 = getRandomInt(4, 15) * 2; }
+                if (mode === 1) {
+                    qContainer.innerHTML = `Найдите НОД чисел ${n1} и ${n2} =`;
+                    currentAnswer = { type: 'single', val: gcd(n1, n2) };
+                } else {
+                    qContainer.innerHTML = `Найдите НОК чисел ${n1} и ${n2} =`;
+                    currentAnswer = { type: 'single', val: findLCM(n1, n2) };
+                }
+                iContainer.innerHTML = `<input type="number" id="ans-single" placeholder="?">`;
+            }
+            else if (theme === 'angles') {
+                let angle = getRandomInt(20, 160);
+                qContainer.innerHTML = `Один из смежных углов равен ${angle}°. Найдите второй угол =`;
+                iContainer.innerHTML = `<input type="number" id="ans-single" placeholder="°">`;
+                currentAnswer = { type: 'single', val: 180 - angle };
+            }
         }
         function checkAnswer() {
             if (isAnswerChecked) { generateProblem(); return; }
@@ -520,7 +607,6 @@
             let isCorrect = false;
             const feedback = document.getElementById('feedback-message');
             const forceReduce = document.getElementById('force-reduce').checked;
-            
             if (currentAnswer.type === 'single') {
                 const userAns = parseFloat(document.getElementById('ans-single').value);
                 if (Math.abs(userAns - currentAnswer.val) < 0.01) isCorrect = true;
@@ -536,9 +622,7 @@
                     if (forceReduce) {
                         const d = gcd(reqNum, reqDen);
                         if (uNum === (reqNum / d) && uDen === (reqDen / d)) isCorrect = true;
-                    } else {
-                        if (uNum * reqDen === reqNum * uDen) isCorrect = true;
-                    }
+                    } else { if (uNum * reqDen === reqNum * uDen) isCorrect = true; }
                 }
             }
             if (isCorrect) {
