@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Тестирование</title>
+    <title>Мега-Генератор Тестов с Пресетами</title>
     <style>
         :root {
             --bg-color: #f0f3f6;
@@ -100,6 +100,10 @@
         button.secondary:hover {
             background-color: #7f8c8d;
         }
+        button.danger {
+            background-color: var(--error);
+            padding: 12px 15px;
+        }
         .setting-item {
             margin-bottom: 22px;
             padding-bottom: 18px;
@@ -133,6 +137,27 @@
             gap: 8px;
             cursor: pointer;
             font-size: 15px;
+        }
+        .preset-box {
+            background: var(--bg-color);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+        }
+        .preset-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        select, input[type="text"].preset-input {
+            flex: 1;
+            padding: 12px;
+            font-size: 15px;
+            border-radius: 8px;
+            border: 2px solid var(--border);
+            background-color: var(--card-bg);
+            color: var(--text);
         }
         .fraction {
             display: inline-flex;
@@ -212,7 +237,14 @@
         <button class="theme-toggle-btn" onclick="toggleTheme()">🌓 Тема</button>
         <div id="screen-main" class="screen active">
             <h1>Универсальный Тренажер</h1>
-            <p style="text-align: center; opacity: 0.7; margin-bottom: 30px;">Прокачай свои знания по математике с гибкими настройками!</p>
+            <p style="text-align: center; opacity: 0.7; margin-bottom: 20px;">Выберите готовый пресет или настройте тест вручную!</p>
+            <div class="preset-box">
+                <label style="display:block; font-weight:700; margin-bottom:8px;">📁 Быстрый выбор пресета:</label>
+                <div class="preset-row">
+                    <select id="preset-select" onchange="applySelectedPreset()"></select>
+                    <button class="danger" onclick="deleteCurrentPreset()" title="Удалить выбранный пресет">🗑️</button>
+                </div>
+            </div>
             <div class="btn-group">
                 <button onclick="switchScreen('screen-quiz'); startQuiz();">Решать тест</button>
                 <button class="secondary" onclick="switchScreen('screen-settings')">Настройки параметров</button>
@@ -220,6 +252,13 @@
         </div>
         <div id="screen-settings" class="screen">
             <h2>Настройки параметров</h2>
+            <div class="preset-box">
+                <label style="display:block; font-weight:700; margin-bottom:8px;">💾 Сохранить текущие настройки как пресет:</label>
+                <div class="preset-row">
+                    <input type="text" id="new-preset-name" class="preset-input" placeholder="Название (напр. Дроби 6 кл)">
+                    <button onclick="saveNewPreset()" style="padding: 12px 16px;">Сохранить</button>
+                </div>
+            </div>
             <div class="setting-item">
                 <label class="main-label">Уровень сложности:</label>
                 <div class="row-group">
@@ -283,7 +322,7 @@
                 </div>
             </div>
             <div class="btn-group">
-                <button onclick="saveAndExitSettings()">Сохранить настройки</button>
+                <button onclick="saveAndExitSettings()">Применить и вернуться</button>
             </div>
         </div>
         <div id="screen-quiz" class="screen">
@@ -318,6 +357,128 @@
         let timerInterval = null;
         let timeLeft = 0;
 
+        const defaultPresets = [
+            {
+                name: "Стандартный (База)",
+                difficulty: "easy",
+                themes: ["integers"],
+                ops: { add: true, sub: true, mul: false, div: false },
+                timer: "off",
+                length: "inf",
+                reduce: false,
+                negative: false
+            },
+            {
+                name: "Подготовка к ОГЭ (Микс)",
+                difficulty: "medium",
+                themes: ["oge", "powers", "probability", "fractions"],
+                ops: { add: true, sub: true, mul: true, div: true },
+                timer: "60",
+                length: "10",
+                reduce: true,
+                negative: true
+            },
+            {
+                name: "Устный счет на время",
+                difficulty: "easy",
+                themes: ["integers", "squares"],
+                ops: { add: true, sub: true, mul: true, div: true },
+                timer: "15",
+                length: "20",
+                reduce: false,
+                negative: false
+            }
+        ];
+        let presets = [];
+
+        function initPresets() {
+            const saved = localStorage.getItem('math_trainer_presets');
+            if (saved) {
+                presets = JSON.parse(saved);
+            } else {
+                presets = JSON.parse(JSON.stringify(defaultPresets));
+                localStorage.setItem('math_trainer_presets', JSON.stringify(presets));
+            }
+            renderPresetSelect();
+            applySelectedPreset();
+        }
+        function renderPresetSelect() {
+            const select = document.getElementById('preset-select');
+            select.innerHTML = '';
+            presets.forEach((p, idx) => {
+                const opt = document.createElement('option');
+                opt.value = idx;
+                opt.innerText = p.name;
+                select.appendChild(opt);
+            });
+        }
+        function applySelectedPreset() {
+            const idx = document.getElementById('preset-select').value;
+            const p = presets[idx];
+            if (!p) return;
+
+            document.querySelector(`input[name="difficulty"][value="${p.difficulty}"]`).checked = true;
+            document.querySelectorAll('.theme-cb').forEach(cb => {
+                cb.checked = p.themes.includes(cb.value);
+            });
+            document.getElementById('op-add').checked = p.ops.add;
+            document.getElementById('op-sub').checked = p.ops.sub;
+            document.getElementById('op-mul').checked = p.ops.mul;
+            document.getElementById('op-div').checked = p.ops.div;
+            document.querySelector(`input[name="timer-opt"][value="${p.timer}"]`).checked = true;
+            document.querySelector(`input[name="length-opt"][value="${p.length}"]`).checked = true;
+            document.getElementById('force-reduce').checked = p.reduce;
+            document.getElementById('allow-negative').checked = p.negative;
+        }
+        function saveNewPreset() {
+            const nameInput = document.getElementById('new-preset-name');
+            const name = nameInput.value.trim();
+            if (!name) {
+                alert("Введите название для вашего пресета!");
+                return;
+            }
+            let checkedThemes = [];
+            document.querySelectorAll('.theme-cb:checked').forEach(cb => checkedThemes.push(cb.value));
+            if (checkedThemes.length === 0) {
+                alert("Выберите хотя бы одну тему перед сохранением!");
+                return;
+            }
+            const newPreset = {
+                name: name,
+                difficulty: document.querySelector('input[name="difficulty"]:checked').value,
+                themes: checkedThemes,
+                ops: {
+                    add: document.getElementById('op-add').checked,
+                    sub: document.getElementById('op-sub').checked,
+                    mul: document.getElementById('op-mul').checked,
+                    div: document.getElementById('op-div').checked
+                },
+                timer: document.querySelector('input[name="timer-opt"]:checked').value,
+                length: document.querySelector('input[name="length-opt"]:checked').value,
+                reduce: document.getElementById('force-reduce').checked,
+                negative: document.getElementById('allow-negative').checked
+            };
+            presets.push(newPreset);
+            localStorage.setItem('math_trainer_presets', JSON.stringify(presets));
+            nameInput.value = '';
+            renderPresetSelect();
+            document.getElementById('preset-select').value = presets.length - 1;
+            alert(`Пресет "${name}" успешно сохранен!`);
+        }
+        function deleteCurrentPreset() {
+            if (presets.length <= 1) {
+                alert("Нельзя удалить последний оставшийся пресет!");
+                return;
+            }
+            const idx = document.getElementById('preset-select').value;
+            const pName = presets[idx].name;
+            if (confirm(`Удалить пресет "${pName}"?`)) {
+                presets.splice(idx, 1);
+                localStorage.setItem('math_trainer_presets', JSON.stringify(presets));
+                renderPresetSelect();
+                applySelectedPreset();
+            }
+        }
         function toggleTheme() {
             const currentTheme = document.documentElement.getAttribute('data-theme');
             if (currentTheme === 'dark') {
@@ -642,6 +803,7 @@
             document.getElementById('btn-action').innerText = 'Следующий пример';
             isAnswerChecked = true;
         }
+        window.onload = initPresets;
     </script>
 </body>
 </html>
