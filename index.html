@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мега-Генератор Тестов с Аналитикой</title>
+    <title>Tests</title>
     <style>
         :root {
             --bg-color: #f0f3f6;
@@ -274,7 +274,7 @@
     <div class="container">
         <button class="theme-toggle-btn" onclick="toggleTheme()">🌓 Тема</button>
         <div id="screen-main" class="screen active">
-            <h1>Универсальный Тренажер</h1>
+            <h1>Тренажер</h1>
             <p style="text-align: center; opacity: 0.7; margin-bottom: 20px;">Настрой тест сам или введи готовый код пресета!</p>
             <div class="code-box">
                 <label style="display:block; font-weight:700; margin-bottom:8px;">🔑 Загрузить пресет по коду:</label>
@@ -306,7 +306,7 @@
                 </div>
             </div>
             <div class="setting-item">
-                <label class="main-label">Выберите темы (можно несколько):</label>
+                <label class="main-label">Выберите темы:</label>
                 <div class="radio-stack">
                     <label><input type="checkbox" class="theme-cb" value="integers" checked> 🔢 Целые числа</label>
                     <label><input type="checkbox" class="theme-cb" value="fractions"> 🥞 Обыкновенные дроби</label>
@@ -348,6 +348,7 @@
                 <label class="main-label">📝 Длина теста (вопросов):</label>
                 <div class="row-group">
                     <label><input type="radio" name="length-opt" value="inf" checked> Бесконечно</label>
+                    <label><input type="radio" name="length-opt" value="5"> 5</label>
                     <label><input type="radio" name="length-opt" value="10"> 10</label>
                     <label><input type="radio" name="length-opt" value="20"> 20</label>
                 </div>
