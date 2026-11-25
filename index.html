@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мега-Генератор Тестов с Кодами Пресетов</title>
+    <title>Мега-Генератор Тестов с Аналитикой</title>
     <style>
         :root {
             --bg-color: #f0f3f6;
@@ -231,6 +231,43 @@
             min-height: 30px;
             margin-bottom: 20px;
         }
+        .grade-badge {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 46px;
+            font-weight: bold;
+            color: white;
+            margin: 15px auto;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+        }
+        .analytics-box {
+            background: var(--bg-color);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 280px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+        }
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+        }
+        .mistake-item {
+            background: var(--card-bg);
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 8px;
+            border-left: 4px solid var(--error);
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -343,7 +380,9 @@
         </div>
         <div id="screen-results" class="screen">
             <h2>Тест завершен!</h2>
-            <h3 id="final-stats" style="margin: 30px 0; font-size: 22px;"></h3>
+            <div id="grade-badge" class="grade-badge">5</div>
+            <h3 id="final-stats" style="margin: 10px 0; font-size: 20px;"></h3>
+            <div id="analytics-container" class="analytics-box"></div>
             <div class="btn-group">
                 <button onclick="switchScreen('screen-main')">На главную страницу</button>
             </div>
@@ -357,6 +396,29 @@
         let isAnswerChecked = false;
         let timerInterval = null;
         let timeLeft = 0;
+        let currentThemeKey = 'integers';
+        let currentQuestionText = '';
+        let sessionStats = {};
+        let sessionMistakes = [];
+
+        const themeNames = {
+            integers: 'Целые числа',
+            fractions: 'Обыкновенные дроби',
+            decimals: 'Десятичные дроби',
+            equations: 'Простые уравнения',
+            percents: 'Проценты от чисел',
+            squares: 'Квадраты чисел',
+            cubes: 'Кубы чисел',
+            area: 'Площадь фигур',
+            compare: 'Сравнение чисел',
+            oge: 'Задания ОГЭ',
+            average: 'Среднее арифметическое',
+            round: 'Округление чисел',
+            powers: 'Свойства степеней',
+            probability: 'Простые вероятности',
+            gcdlcm: 'Поиск НОД и НОК',
+            angles: 'Градусы и углы'
+        };
 
         function generatePresetCode() {
             const diffMap = { easy: 'E', medium: 'M', hard: 'H' };
@@ -392,6 +454,7 @@
             outInput.value = code;
             outInput.select();
         }
+
         function importPresetCode() {
             const raw = document.getElementById('import-code-input').value.trim().toUpperCase();
             if (!raw) {
@@ -408,18 +471,17 @@
             const timerRev = { '0': 'off', '1': '15', '2': '30', '3': '60' };
             const lenRev = { '0': 'inf', '1': '10', '2': '20' };
 
-            const diffVal = diffRev[parts[0]];
-            const themeMask = parseInt(parts[1], 36);
-            const opMask = parseInt(parts[2], 16);
-            const timerVal = timerRev[parts[3]];
-            const lenVal = lenRev[parts[4]];
-            const extraMask = parseInt(parts[5], 10);
+            const diffVal = diffRev[parts];
+            const themeMask = parseInt(parts, 36);
+            const opMask = parseInt(parts, 16);
+            const timerVal = timerRev[parts];
+            const lenVal = lenRev[parts];
+            const extraMask = parseInt(parts, 10);
 
             if (!diffVal || isNaN(themeMask) || isNaN(opMask) || !timerVal || !lenVal || isNaN(extraMask)) {
                 alert("Код поврежден или содержит ошибку!");
                 return;
             }
-
             document.querySelector(`input[name="difficulty"][value="${diffVal}"]`).checked = true;
             document.querySelectorAll('.theme-cb').forEach((cb, index) => {
                 cb.checked = Boolean(themeMask & (1 << index));
@@ -477,6 +539,8 @@
         function startQuiz() {
             score = 0;
             questionNumber = 0;
+            sessionStats = {};
+            sessionMistakes = [];
             const lenVal = document.querySelector('input[name="length-opt"]:checked').value;
             maxQuestions = lenVal === 'inf' ? Infinity : parseInt(lenVal);
             document.getElementById('score-count').innerText = score;
@@ -509,21 +573,85 @@
                 }
             }, 1000);
         }
+        function getCorrectAnswerStr() {
+            const forceReduce = document.getElementById('force-reduce').checked;
+            if (currentAnswer.type === 'single' || currentAnswer.type === 'text') {
+                return currentAnswer.val;
+            } else {
+                let reqNum = currentAnswer.num;
+                let reqDen = currentAnswer.den;
+                if (reqDen < 0) { reqNum = -reqNum; reqDen = -reqDen; }
+                if (forceReduce) {
+                    const d = gcd(reqNum, reqDen);
+                    return `${reqNum / d}/${reqDen / d}`;
+                }
+                return `${reqNum}/${reqDen}`;
+            }
+        }
+        function recordAttempt(isCorrect, userStr) {
+            if (!sessionStats[currentThemeKey]) {
+                sessionStats[currentThemeKey] = { total: 0, correct: 0 };
+            }
+            sessionStats[currentThemeKey].total++;
+            if (isCorrect) {
+                sessionStats[currentThemeKey].correct++;
+            } else {
+                sessionMistakes.push({
+                    theme: themeNames[currentThemeKey] || currentThemeKey,
+                    question: currentQuestionText,
+                    user: userStr,
+                    correct: getCorrectAnswerStr()
+                });
+            }
+        }
         function handleTimeOut() {
             isAnswerChecked = true;
             const feedback = document.getElementById('feedback-message');
             feedback.innerText = "Время вышло! ⏱️";
             feedback.style.color = "var(--error)";
+            recordAttempt(false, "Время вышло");
             if (maxQuestions === Infinity) score = 0;
             document.getElementById('score-count').innerText = score;
             document.getElementById('btn-action').innerText = 'Следующий пример';
+        }
+        function showResultsScreen() {
+            const percent = Math.round((score / maxQuestions) * 100);
+            let grade = 2;
+            let color = "var(--error)";
+            if (percent >= 85) { grade = 5; color = "var(--success)"; }
+            else if (percent >= 70) { grade = 4; color = "#3498db"; }
+            else if (percent >= 50) { grade = 3; color = "#f39c12"; }
+
+            const badge = document.getElementById('grade-badge');
+            badge.innerText = grade;
+            badge.style.backgroundColor = color;
+            document.getElementById('final-stats').innerText = `Верно: ${score} из ${maxQuestions} (${percent}%)`;
+
+            let html = '<div style="font-weight:700; margin-bottom:8px;">📊 Статистика по темам:</div>';
+            for (const [key, data] of Object.entries(sessionStats)) {
+                const name = themeNames[key] || key;
+                const isPerfect = data.correct === data.total;
+                const statusColor = isPerfect ? 'var(--success)' : 'var(--error)';
+                html += `<div class="stat-row"><span>${name}</span><span style="font-weight:bold; color:${statusColor};">${data.correct} из ${data.total}</span></div>`;
+            }
+
+            if (sessionMistakes.length > 0) {
+                html += '<div style="font-weight:700; margin-top:15px; margin-bottom:6px; color:var(--error);">❌ Разбор ошибок:</div>';
+                sessionMistakes.forEach(m => {
+                    html += `<div class="mistake-item"><b>${m.theme}:</b> ${m.question}<br>Ваш ответ: <span style="color:var(--error);">${m.user}</span> | Правильно: <span style="color:var(--success); font-weight:bold;">${m.correct}</span></div>`;
+                });
+            } else {
+                html += '<div style="text-align:center; color:var(--success); font-weight:bold; margin-top:15px;">🎉 Идеально! Ошибок нет.</div>';
+            }
+
+            document.getElementById('analytics-container').innerHTML = html;
+            switchScreen('screen-results');
         }
         function generateProblem() {
             clearInterval(timerInterval);
             questionNumber++;
             if (questionNumber > maxQuestions) {
-                document.getElementById('final-stats').innerText = `Ваш результат: ${score} из ${maxQuestions} верно!`;
-                switchScreen('screen-results');
+                showResultsScreen();
                 return;
             }
             document.getElementById('quest-count').innerText = maxQuestions === Infinity ? questionNumber : `${questionNumber}/${maxQuestions}`;
@@ -535,6 +663,7 @@
             document.querySelectorAll('.theme-cb:checked').forEach(cb => checkedThemes.push(cb.value));
             if (checkedThemes.length === 0) checkedThemes = ['integers'];
             const theme = checkedThemes[Math.floor(Math.random() * checkedThemes.length)];
+            currentThemeKey = theme;
             
             const diff = document.querySelector('input[name="difficulty"]:checked').value;
             const op = getSelectedOperation();
@@ -560,7 +689,8 @@
                     if (op === '-' && n1 < n2 && !allowNeg) [n1, n2] = [n2, n1];
                     ans = op === '+' ? n1 + n2 : op === '-' ? n1 - n2 : n1 * n2;
                 }
-                qContainer.innerHTML = `${n1} ${opSign} ${n2} =`;
+                currentQuestionText = `${n1} ${opSign} ${n2}`;
+                qContainer.innerHTML = `${currentQuestionText} =`;
                 iContainer.innerHTML = `<input type="number" id="ans-single" placeholder="?">`;
                 currentAnswer = { type: 'single', val: ans };
             } 
@@ -569,6 +699,7 @@
                 let num2 = getRandomInt(1, maxDen - 1), den2 = getRandomInt(2, maxDen);
                 if (op === '/' && num2 === 0) num2 = 1;
                 if (op === '-' && (num1/den1 < num2/den2) && !allowNeg) { [num1, num2] = [num2, num1]; [den1, den2] = [den2, den1]; }
+                currentQuestionText = `${num1}/${den1} ${opSign} ${num2}/${den2}`;
                 qContainer.innerHTML = `<div class="fraction"><span class="numerator">${num1}</span><span class="denominator">${den1}</span></div> <span>${opSign}</span> <div class="fraction"><span class="numerator">${num2}</span><span class="denominator">${den2}</span></div> <span>=</span>`;
                 iContainer.innerHTML = `<div class="fraction"><input type="number" id="ans-num" placeholder="Числ." required><span style="border-bottom: 2px solid var(--text); width: 100%; margin: 4px 0;"></span><input type="number" id="ans-den" placeholder="Знам." required></div>`;
                 let rNum, rDen;
@@ -585,7 +716,8 @@
                 if (op === '/' && n2 === 0) n2 = 1;
                 if (op === '-' && n1 < n2 && !allowNeg) [n1, n2] = [n2, n1];
                 let precision = diff === 'easy' ? 1 : 2;
-                qContainer.innerHTML = `${n1.toFixed(precision)} ${opSign} ${n2.toFixed(precision)} =`;
+                currentQuestionText = `${n1.toFixed(precision)} ${opSign} ${n2.toFixed(precision)}`;
+                qContainer.innerHTML = `${currentQuestionText} =`;
                 iContainer.innerHTML = `<input type="number" step="0.001" id="ans-single" placeholder="?">`;
                 let ans = op === '+' ? n1 + n2 : op === '-' ? n1 - n2 : op === '*' ? n1 * n2 : n1 / n2;
                 currentAnswer = { type: 'single', val: parseFloat(ans.toFixed(precision + 1)) };
@@ -595,7 +727,8 @@
                 if (getRandomInt(0, 1) === 1 && allowNeg) x = -x;
                 let num = getRandomInt(diff === 'easy' ? 2 : 10, maxRange);
                 let result = op === '+' ? x + num : op === '-' ? x - num : op === '*' ? x * num : parseFloat((x / num).toFixed(2));
-                qContainer.innerHTML = `X ${opSign} ${num} = ${result}`;
+                currentQuestionText = `X ${opSign} ${num} = ${result}`;
+                qContainer.innerHTML = currentQuestionText;
                 iContainer.innerHTML = `<span>X =</span><input type="number" step="0.01" id="ans-single" placeholder="?">`;
                 currentAnswer = { type: 'single', val: x };
             }
@@ -604,19 +737,22 @@
                 if (diff === 'medium') percent = getRandomInt(1, 9) * 10;
                 if (diff === 'hard') percent = getRandomInt(3, 95);
                 let base = getRandomInt(10, 50) * 10;
-                qContainer.innerHTML = `Найти ${percent}% от ${base} =`;
+                currentQuestionText = `Найти ${percent}% от ${base}`;
+                qContainer.innerHTML = `${currentQuestionText} =`;
                 iContainer.innerHTML = `<input type="number" step="0.01" id="ans-single" placeholder="?">`;
                 currentAnswer = { type: 'single', val: parseFloat(((percent * base) / 100).toFixed(2)) };
             }
             else if (theme === 'squares') {
                 let num = getRandomInt(2, diff === 'easy' ? 10 : diff === 'medium' ? 20 : 30);
-                qContainer.innerHTML = `${num}² =`;
+                currentQuestionText = `${num}²`;
+                qContainer.innerHTML = `${currentQuestionText} =`;
                 iContainer.innerHTML = `<input type="number" id="ans-single" placeholder="?">`;
                 currentAnswer = { type: 'single', val: num * num };
             }
             else if (theme === 'cubes') {
                 let num = getRandomInt(2, diff === 'easy' ? 5 : diff === 'medium' ? 10 : 15);
-                qContainer.innerHTML = `${num}³ =`;
+                currentQuestionText = `${num}³`;
+                qContainer.innerHTML = `${currentQuestionText} =`;
                 iContainer.innerHTML = `<input type="number" id="ans-single" placeholder="?">`;
                 currentAnswer = { type: 'single', val: num * num * num };
             }
@@ -624,18 +760,20 @@
                 let side1 = getRandomInt(2, diff === 'easy' ? 10 : 25);
                 let side2 = getRandomInt(2, diff === 'easy' ? 10 : 25);
                 if (getRandomInt(0, 1) === 1) {
-                    qContainer.innerHTML = `Площадь квадрата со стороной ${side1} =`;
+                    currentQuestionText = `Площадь квадрата со стороной ${side1}`;
                     currentAnswer = { type: 'single', val: side1 * side1 };
                 } else {
-                    qContainer.innerHTML = `Площадь прямоугольника со сторонами ${side1} и ${side2} =`;
+                    currentQuestionText = `Площадь прямоугольника ${side1} × ${side2}`;
                     currentAnswer = { type: 'single', val: side1 * side2 };
                 }
+                qContainer.innerHTML = `${currentQuestionText} =`;
                 iContainer.innerHTML = `<input type="number" id="ans-single" placeholder="S = ?">`;
             }
             else if (theme === 'compare') {
                 let n1 = getRandomInt(minRange, maxRange);
                 let n2 = getRandomInt(minRange, maxRange);
                 if (getRandomInt(0, 2) === 1) n1 = n2; 
+                currentQuestionText = `Сравните числа: ${n1} и ${n2}`;
                 qContainer.innerHTML = `Сравните числа: ${n1} [ ? ] ${n2}`;
                 iContainer.innerHTML = `<input type="text" id="ans-text" placeholder=">, < или =" style="width:140px;">`;
                 let ans = n1 > n2 ? '>' : n1 < n2 ? '<' : '=';
@@ -646,13 +784,15 @@
                 if (mode === 1) {
                     let mult = getRandomInt(2, 6), den1 = getRandomInt(2, 4), num1 = 1;
                     let den2 = den1 * mult, num2 = getRandomInt(1, 3), ext = den2;
+                    currentQuestionText = `(${num1}/${den1} + ${num2}/${den2}) × ${ext}`;
                     qContainer.innerHTML = `( <div class="fraction"><span class="numerator">${num1}</span><span class="denominator">${den1}</span></div> + <div class="fraction"><span class="numerator">${num2}</span><span class="denominator">${den2}</span></div> ) × ${ext} =`;
                     let ans = ((num1 * mult + num2) / den2) * ext;
                     iContainer.innerHTML = `<input type="number" id="ans-single" placeholder="?">`;
                     currentAnswer = { type: 'single', val: Math.round(ans) };
                 } else {
                     let d1 = (getRandomInt(11, 39) / 10), d2 = getRandomInt(2, 5), d3 = (getRandomInt(10, 49) / 10);
-                    qContainer.innerHTML = `${d1.toFixed(1)} × ${d2} + ${d3.toFixed(1)} =`;
+                    currentQuestionText = `${d1.toFixed(1)} × ${d2} + ${d3.toFixed(1)}`;
+                    qContainer.innerHTML = `${currentQuestionText} =`;
                     let ans = d1 * d2 + d3;
                     iContainer.innerHTML = `<input type="number" step="0.1" id="ans-single" placeholder="?">`;
                     currentAnswer = { type: 'single', val: parseFloat(ans.toFixed(1)) };
@@ -663,30 +803,33 @@
                 let n1 = getRandomInt(2, maxRange), n2 = getRandomInt(2, maxRange), n3 = getRandomInt(2, maxRange);
                 if (count === 2) {
                     if ((n1 + n2) % 2 !== 0) n1++;
-                    qContainer.innerHTML = `Среднее арифм. чисел ${n1} и ${n2} =`;
+                    currentQuestionText = `Среднее арифм. ${n1} и ${n2}`;
                     currentAnswer = { type: 'single', val: (n1 + n2) / 2 };
                 } else {
                     while ((n1 + n2 + n3) % 3 !== 0) n1++;
-                    qContainer.innerHTML = `Среднее арифм. чисел ${n1}, ${n2} и ${n3} =`;
+                    currentQuestionText = `Среднее арифм. ${n1}, ${n2} и ${n3}`;
                     currentAnswer = { type: 'single', val: (n1 + n2 + n3) / 3 };
                 }
+                qContainer.innerHTML = `${currentQuestionText} =`;
                 iContainer.innerHTML = `<input type="number" id="ans-single" placeholder="?">`;
             }
             else if (theme === 'round') {
                 let num = getRandomInt(105, 995) / 100;
                 let mode = getRandomInt(1, 2);
                 if (mode === 1) {
-                    qContainer.innerHTML = `Округлите ${num.toFixed(2)} до целых =`;
+                    currentQuestionText = `Округлите ${num.toFixed(2)} до целых`;
                     currentAnswer = { type: 'single', val: Math.round(num) };
                 } else {
-                    qContainer.innerHTML = `Округлите ${num.toFixed(2)} до десятых =`;
+                    currentQuestionText = `Округлите ${num.toFixed(2)} до десятых`;
                     currentAnswer = { type: 'single', val: parseFloat(num.toFixed(1)) };
                 }
+                qContainer.innerHTML = `${currentQuestionText} =`;
                 iContainer.innerHTML = `<input type="number" step="0.1" id="ans-single" placeholder="?">`;
             }
             else if (theme === 'powers') {
                 let base = getRandomInt(2, 5);
                 let p1 = getRandomInt(3, 6), p2 = getRandomInt(2, 4), p3 = getRandomInt(3, p1 + p2 - 1);
+                currentQuestionText = `(${base}^${p1} × ${base}^${p2}) / ${base}^${p3}`;
                 qContainer.innerHTML = `<div class="fraction"><span class="numerator">${base}<sup>${p1}</sup> × ${base}<sup>${p2}</sup></span><span class="denominator">${base}<sup>${p3}</sup></span></div> =`;
                 iContainer.innerHTML = `<input type="number" id="ans-single" placeholder="?">`;
                 currentAnswer = { type: 'single', val: Math.pow(base, (p1 + p2 - p3)) };
@@ -694,6 +837,7 @@
             else if (theme === 'probability') {
                 let total = diff === 'easy' ? 4 : diff === 'medium' ? 20 : 50;
                 let favorable = getRandomInt(1, total - 1);
+                currentQuestionText = `Вероятность (${favorable} из ${total} шаров)`;
                 qContainer.innerHTML = `В коробке ${total} шаров, из них ${favorable} красных. Какова вероятность вытащить красный шар? (в виде дес. дроби)`;
                 iContainer.innerHTML = `<input type="number" step="0.01" id="ans-single" placeholder="?">`;
                 currentAnswer = { type: 'single', val: parseFloat((favorable / total).toFixed(2)) };
@@ -703,16 +847,18 @@
                 let n1 = getRandomInt(4, 15) * 2, n2 = getRandomInt(4, 15) * 2;
                 while(n1 === n2) { n2 = getRandomInt(4, 15) * 2; }
                 if (mode === 1) {
-                    qContainer.innerHTML = `Найдите НОД чисел ${n1} и ${n2} =`;
+                    currentQuestionText = `НОД(${n1}; ${n2})`;
                     currentAnswer = { type: 'single', val: gcd(n1, n2) };
                 } else {
-                    qContainer.innerHTML = `Найдите НОК чисел ${n1} и ${n2} =`;
+                    currentQuestionText = `НОК(${n1}; ${n2})`;
                     currentAnswer = { type: 'single', val: findLCM(n1, n2) };
                 }
+                qContainer.innerHTML = `Найдите ${currentQuestionText} =`;
                 iContainer.innerHTML = `<input type="number" id="ans-single" placeholder="?">`;
             }
             else if (theme === 'angles') {
                 let angle = getRandomInt(20, 160);
+                currentQuestionText = `Смежный угол к ${angle}°`;
                 qContainer.innerHTML = `Один из смежных углов равен ${angle}°. Найдите второй угол =`;
                 iContainer.innerHTML = `<input type="number" id="ans-single" placeholder="°">`;
                 currentAnswer = { type: 'single', val: 180 - angle };
@@ -722,18 +868,25 @@
             if (isAnswerChecked) { generateProblem(); return; }
             clearInterval(timerInterval);
             let isCorrect = false;
+            let userDisplayStr = "";
             const feedback = document.getElementById('feedback-message');
             const forceReduce = document.getElementById('force-reduce').checked;
             if (currentAnswer.type === 'single') {
-                const userAns = parseFloat(document.getElementById('ans-single').value);
+                const rawVal = document.getElementById('ans-single').value;
+                userDisplayStr = rawVal === "" ? "пусто" : rawVal;
+                const userAns = parseFloat(rawVal);
                 if (Math.abs(userAns - currentAnswer.val) < 0.01) isCorrect = true;
             } else if (currentAnswer.type === 'text') {
                 const userAns = document.getElementById('ans-text').value.trim();
+                userDisplayStr = userAns === "" ? "пусто" : userAns;
                 if (userAns === currentAnswer.val) isCorrect = true;
             } else if (currentAnswer.type === 'frac') {
-                const uNum = parseInt(document.getElementById('ans-num').value);
-                const uDen = parseInt(document.getElementById('ans-den').value);
-                if (uDen !== 0) {
+                const rawN = document.getElementById('ans-num').value;
+                const rawD = document.getElementById('ans-den').value;
+                userDisplayStr = (rawN === "" || rawD === "") ? "пусто" : `${rawN}/${rawD}`;
+                const uNum = parseInt(rawN);
+                const uDen = parseInt(rawD);
+                if (uDen !== 0 && !isNaN(uNum) && !isNaN(uDen)) {
                     let reqNum = currentAnswer.num; let reqDen = currentAnswer.den;
                     if (reqDen < 0) { reqNum = -reqNum; reqDen = -reqDen; }
                     if (forceReduce) {
@@ -742,17 +895,11 @@
                     } else { if (uNum * reqDen === reqNum * uDen) isCorrect = true; }
                 }
             }
+            recordAttempt(isCorrect, userDisplayStr);
             if (isCorrect) {
                 feedback.innerText = "Правильно! 🎉"; feedback.style.color = "var(--success)"; score++;
             } else {
-                let rightStr = "";
-                if (currentAnswer.type === 'single' || currentAnswer.type === 'text') { rightStr = currentAnswer.val; } else {
-                    let reqNum = currentAnswer.num; let reqDen = currentAnswer.den;
-                    if (reqDen < 0) { reqNum = -reqNum; reqDen = -reqDen; }
-                    if (forceReduce) { const d = gcd(reqNum, reqDen); rightStr = `${reqNum / d}/${reqDen / d}`; } 
-                    else { rightStr = `${reqNum}/${reqDen}`; }
-                }
-                feedback.innerText = `Ошибка! Правильно: ${rightStr}`; feedback.style.color = "var(--error)"; 
+                feedback.innerText = `Ошибка! Правильно: ${getCorrectAnswerStr()}`; feedback.style.color = "var(--error)"; 
                 if (maxQuestions === Infinity) score = 0;
             }
             document.getElementById('score-count').innerText = score;
