@@ -689,7 +689,7 @@
                 renderClassRoster();
             }
         }
-        function buildCurrentCodeString() {
+                function buildCurrentCodeString() {
             const diffMap = { easy: 'E', medium: 'M', hard: 'H' };
             const diff = diffMap[document.querySelector('input[name="difficulty"]:checked').value];
 
@@ -727,7 +727,7 @@
             const outInput = document.getElementById('export-code-output');
             outInput.value = code;
             outInput.select();
-            try { window.location.hash = code; } catch(e) {}
+            try { history.replaceState(null, '', '#' + code); } catch(e) {}
         }
 
         function copyPresetLink() {
@@ -737,9 +737,9 @@
                 return;
             }
             document.getElementById('export-code-output').value = code;
-            const baseUrl = window.location.href.split('#');
+            const baseUrl = window.location.href.split('#')[0];
             const fullUrl = `${baseUrl}#${code}`;
-            try { window.location.hash = code; } catch(e) {}
+            try { history.replaceState(null, '', '#' + code); } catch(e) {}
             
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(fullUrl).then(() => {
@@ -753,7 +753,8 @@
         }
 
         function applyCodeString(rawCode, silent) {
-            let clean = rawCode.trim();
+            if (!rawCode) return false;
+            let clean = decodeURIComponent(rawCode).trim();
             if (clean.includes('#')) {
                 clean = clean.split('#').pop();
             }
@@ -769,12 +770,12 @@
             const timerRev = { '0': 'off', '1': '15', '2': '30', '3': '60' };
             const lenRev = { '0': 'inf', '1': '5', '2': '10', '3': '20' };
 
-            const diffVal = diffRev[parts];
-            const themeMask = parseInt(parts, 36);
-            const opMask = parseInt(parts, 16);
-            const timerVal = timerRev[parts];
-            const lenVal = lenRev[parts];
-            const extraMask = parseInt(parts, 10);
+            const diffVal = diffRev[parts[0]];
+            const themeMask = parseInt(parts[1], 36);
+            const opMask = parseInt(parts[2], 16);
+            const timerVal = timerRev[parts[3]];
+            const lenVal = lenRev[parts[4]];
+            const extraMask = parseInt(parts[5], 10);
 
             if (!diffVal || isNaN(themeMask) || isNaN(opMask) || !timerVal || !lenVal || isNaN(extraMask)) {
                 if (!silent) alert("Код поврежден или содержит ошибку!");
@@ -796,7 +797,8 @@
             document.getElementById('import-code-input').value = raw;
             return true;
         }
-        function importPresetCode() {
+
+                function importPresetCode() {
             const raw = document.getElementById('import-code-input').value;
             if (!raw.trim()) {
                 alert("Введите код пресета!");
@@ -804,10 +806,20 @@
             }
             if (applyCodeString(raw, false)) {
                 const cleanCode = buildCurrentCodeString();
-                try { window.location.hash = cleanCode; } catch(e) {}
+                try { history.replaceState(null, '', '#' + cleanCode); } catch(e) {}
                 alert("Пресет успешно загружен! Можете нажимать «Решать тест».");
             }
         }
+        function checkHashAndLaunch() {
+            const hash = window.location.hash;
+            if (hash && hash.length > 1) {
+                if (applyCodeString(hash, true)) {
+                    switchScreen('screen-quiz');
+                    startQuiz();
+                }
+            }
+        }
+        window.addEventListener('hashchange', checkHashAndLaunch);
         function toggleTheme() {
             const currentTheme = document.documentElement.getAttribute('data-theme');
             if (currentTheme === 'dark') {
@@ -853,7 +865,7 @@
             questionNumber = 0;
             sessionStats = {};
             sessionMistakes = [];
-            const activeSt = classData.students.find(s => s.id === classData.activeId) || classData.students;
+            const activeSt = classData.students.find(s => s.id === classData.activeId) || classData.students[0];
             document.getElementById('quiz-student-name').innerText = activeSt.name;
             const lenVal = document.querySelector('input[name="length-opt"]:checked').value;
             maxQuestions = lenVal === 'inf' ? Infinity : parseInt(lenVal);
@@ -902,6 +914,7 @@
                 return `${reqNum}/${reqDen}`;
             }
         }
+
         function recordAttempt(isCorrect, userStr) {
             if (!sessionStats[currentThemeKey]) {
                 sessionStats[currentThemeKey] = { total: 0, correct: 0 };
@@ -1238,8 +1251,9 @@
         }
         window.onload = function() {
             loadClassData();
-            checkUrlHashOnLoad();
+            checkHashAndLaunch();
         };
     </script>
 </body>
 </html>
+
