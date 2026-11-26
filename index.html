@@ -730,7 +730,7 @@
             try { history.replaceState(null, '', '#' + code); } catch(e) {}
         }
 
-                        function copyPresetLink() {
+                    function copyPresetLink() {
             const code = buildCurrentCodeString();
             if (!code) {
                 alert("Выберите хотя бы одну тему!");
@@ -766,16 +766,17 @@
                 return false;
             }
 
+            const [pDiff, pTheme, pOp, pTimer, pLen, pExtra] = parts;
             const diffRev = { E: 'easy', M: 'medium', H: 'hard' };
             const timerRev = { '0': 'off', '1': '15', '2': '30', '3': '60' };
             const lenRev = { '0': 'inf', '1': '5', '2': '10', '3': '20' };
 
-            const diffVal = diffRev[parts[0]];
-            const themeMask = parseInt(parts[1], 36);
-            const opMask = parseInt(parts[2], 16);
-            const timerVal = timerRev[parts[3]];
-            const lenVal = lenRev[parts[4]];
-            const extraMask = parseInt(parts[5], 10);
+            const diffVal = diffRev[pDiff];
+            const themeMask = parseInt(pTheme, 36);
+            const opMask = parseInt(pOp, 16);
+            const timerVal = timerRev[pTimer];
+            const lenVal = lenRev[pLen];
+            const extraMask = parseInt(pExtra, 10);
 
             if (!diffVal || isNaN(themeMask) || isNaN(opMask) || !timerVal || !lenVal || isNaN(extraMask)) {
                 if (!silent) alert("Код поврежден или содержит ошибку!");
@@ -797,6 +798,7 @@
             document.getElementById('import-code-input').value = raw;
             return true;
         }
+
 
 
                 function importPresetCode() {
