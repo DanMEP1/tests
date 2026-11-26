@@ -157,6 +157,7 @@
             display: flex;
             gap: 10px;
             align-items: center;
+            flex-wrap: wrap;
         }
         select, input[type="text"].std-input {
             flex: 1;
@@ -169,6 +170,7 @@
         }
         input[type="text"].code-input {
             flex: 1;
+            min-width: 150px;
             padding: 12px;
             font-size: 16px;
             font-family: monospace;
@@ -329,7 +331,7 @@
                 </div>
                 <div class="flex-row" style="margin-bottom:10px;">
                     <select id="student-select" onchange="selectStudentProfile()"></select>
-                    <button onclick="createNewStudentPrompt()" style="padding: 12px 15px;" title="Добавить ученика">➕</button>
+                    <button onclick="createNewStudentPrompt()" style="padding: 12px 15px;" title="Добавить ученика">+</button>
                 </div>
                 <div style="font-size:13px; opacity:0.75;" id="student-tests-info">Пройдено тестов с оценкой: 0</div>
             </div>
@@ -382,7 +384,8 @@
                 <label style="display:block; font-weight:700; margin-bottom:8px;">Код твоих текущих настроек (для переноса):</label>
                 <div class="flex-row">
                     <input type="text" id="export-code-output" class="code-input" readonly placeholder="Нажми 'Создать код'">
-                    <button onclick="generatePresetCode()" style="padding: 12px 16px;">Создать код</button>
+                    <button onclick="generatePresetCode()" style="padding: 12px 14px;">Создать код</button>
+                    <button onclick="copyPresetLink()" style="padding: 12px 14px; background-color: var(--success);">Скопировать ссылку</button>
                 </div>
             </div>
             <div class="setting-item">
@@ -647,11 +650,11 @@
             if (!st) return;
 
             document.getElementById('student-detail-modal').style.display = 'block';
-            document.getElementById('detail-student-name').innerText = `👤 ${st.name}`;
+            document.getElementById('detail-student-name').innerText = st.name;
             const histDiv = document.getElementById('detail-student-history');
 
             if (st.history.length === 0) {
-                histDiv.innerHTML = '<div style="opacity:0.7;">Ученик еще не завершил ни одного теста на оценку (10 или 20 вопросов).</div>';
+                histDiv.innerHTML = '<div style="opacity:0.7;">Ученик еще не завершил ни одного теста на оценку (5, 10 или 20 вопросов).</div>';
                 return;
             }
 
@@ -686,7 +689,7 @@
                 renderClassRoster();
             }
         }
-        function generatePresetCode() {
+        function buildCurrentCodeString() {
             const diffMap = { easy: 'E', medium: 'M', hard: 'H' };
             const diff = diffMap[document.querySelector('input[name="difficulty"]:checked').value];
 
@@ -694,10 +697,7 @@
             document.querySelectorAll('.theme-cb').forEach((cb, index) => {
                 if (cb.checked) themeMask |= (1 << index);
             });
-            if (themeMask === 0) {
-                alert("Выберите хотя бы одну тему!");
-                return;
-            }
+            if (themeMask === 0) return null;
 
             let opMask = 0;
             if (document.getElementById('op-add').checked) opMask |= 1;
@@ -708,34 +708,66 @@
             const timerMap = { off: '0', '15': '1', '30': '2', '60': '3' };
             const timer = timerMap[document.querySelector('input[name="timer-opt"]:checked').value];
 
-            const lenMap = { inf: '0', '10': '1', '20': '2' };
+            const lenMap = { inf: '0', '5': '1', '10': '2', '20': '3' };
             const len = lenMap[document.querySelector('input[name="length-opt"]:checked').value];
 
             let extraMask = 0;
             if (document.getElementById('force-reduce').checked) extraMask |= 1;
             if (document.getElementById('allow-negative').checked) extraMask |= 2;
 
-            const code = `${diff}-${themeMask.toString(36).toUpperCase()}-${opMask.toString(16).toUpperCase()}-${timer}-${len}-${extraMask}`;
+            return `${diff}-${themeMask.toString(36).toUpperCase()}-${opMask.toString(16).toUpperCase()}-${timer}-${len}-${extraMask}`;
+        }
+
+        function generatePresetCode() {
+            const code = buildCurrentCodeString();
+            if (!code) {
+                alert("Выберите хотя бы одну тему!");
+                return;
+            }
             const outInput = document.getElementById('export-code-output');
             outInput.value = code;
             outInput.select();
+            try { window.location.hash = code; } catch(e) {}
         }
 
-        function importPresetCode() {
-            const raw = document.getElementById('import-code-input').value.trim().toUpperCase();
-            if (!raw) {
-                alert("Введите код пресета!");
+        function copyPresetLink() {
+            const code = buildCurrentCodeString();
+            if (!code) {
+                alert("Выберите хотя бы одну тему!");
                 return;
             }
+            document.getElementById('export-code-output').value = code;
+            const baseUrl = window.location.href.split('#');
+            const fullUrl = `${baseUrl}#${code}`;
+            try { window.location.hash = code; } catch(e) {}
+            
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(fullUrl).then(() => {
+                    alert("Ссылка скопирована:\n" + fullUrl);
+                }).catch(() => {
+                    prompt("Скопируйте эту ссылку на тест:", fullUrl);
+                });
+            } else {
+                prompt("Скопируйте эту ссылку на тест:", fullUrl);
+            }
+        }
+
+        function applyCodeString(rawCode, silent) {
+            let clean = rawCode.trim();
+            if (clean.includes('#')) {
+                clean = clean.split('#').pop();
+            }
+            const raw = clean.trim().toUpperCase();
+            if (!raw) return false;
             const parts = raw.split('-');
             if (parts.length !== 6) {
-                alert("Неверный формат кода! Проверьте символы и дефисы.");
-                return;
+                if (!silent) alert("Неверный формат кода! Проверьте символы и дефисы.");
+                return false;
             }
 
             const diffRev = { E: 'easy', M: 'medium', H: 'hard' };
             const timerRev = { '0': 'off', '1': '15', '2': '30', '3': '60' };
-            const lenRev = { '0': 'inf', '1': '10', '2': '20' };
+            const lenRev = { '0': 'inf', '1': '5', '2': '10', '3': '20' };
 
             const diffVal = diffRev[parts];
             const themeMask = parseInt(parts, 36);
@@ -745,8 +777,8 @@
             const extraMask = parseInt(parts, 10);
 
             if (!diffVal || isNaN(themeMask) || isNaN(opMask) || !timerVal || !lenVal || isNaN(extraMask)) {
-                alert("Код поврежден или содержит ошибку!");
-                return;
+                if (!silent) alert("Код поврежден или содержит ошибку!");
+                return false;
             }
 
             document.querySelector(`input[name="difficulty"][value="${diffVal}"]`).checked = true;
@@ -761,8 +793,20 @@
             document.querySelector(`input[name="length-opt"][value="${lenVal}"]`).checked = true;
             document.getElementById('force-reduce').checked = Boolean(extraMask & 1);
             document.getElementById('allow-negative').checked = Boolean(extraMask & 2);
-
-            alert("Пресет успешно загружен! Можете нажимать «Решать тест».");
+            document.getElementById('import-code-input').value = raw;
+            return true;
+        }
+        function importPresetCode() {
+            const raw = document.getElementById('import-code-input').value;
+            if (!raw.trim()) {
+                alert("Введите код пресета!");
+                return;
+            }
+            if (applyCodeString(raw, false)) {
+                const cleanCode = buildCurrentCodeString();
+                try { window.location.hash = cleanCode; } catch(e) {}
+                alert("Пресет успешно загружен! Можете нажимать «Решать тест».");
+            }
         }
         function toggleTheme() {
             const currentTheme = document.documentElement.getAttribute('data-theme');
@@ -790,6 +834,7 @@
             const code = prompt("Введите секретный код для выхода на главную:");
             if (code === "1706") {
                 clearInterval(timerInterval);
+                try { history.replaceState(null, '', window.location.pathname + window.location.search); } catch(e) {}
                 switchScreen('screen-main');
             } else if (code !== null) {
                 alert("Неверный код! Доступ заблокирован.");
@@ -876,7 +921,7 @@
         function handleTimeOut() {
             isAnswerChecked = true;
             const feedback = document.getElementById('feedback-message');
-            feedback.innerText = "Время вышло! ⏱️";
+            feedback.innerText = "Время вышло!";
             feedback.style.color = "var(--error)";
             recordAttempt(false, "Время вышло");
             if (maxQuestions === Infinity) score = 0;
@@ -926,10 +971,11 @@
                     html += `<div class="mistake-item"><b>${m.theme}:</b> ${m.question}<br>Ваш ответ: <span style="color:var(--error);">${m.user}</span> | Правильно: <span style="color:var(--success); font-weight:bold;">${m.correct}</span></div>`;
                 });
             } else {
-                html += '<div style="text-align:center; color:var(--success); font-weight:bold; margin-top:15px;">🎉 Идеально! Ошибок нет.</div>';
+                html += '<div style="text-align:center; color:var(--success); font-weight:bold; margin-top:15px;">Идеально! Ошибок нет.</div>';
             }
 
             document.getElementById('analytics-container').innerHTML = html;
+            try { history.replaceState(null, '', window.location.pathname + window.location.search); } catch(e) {}
             switchScreen('screen-results');
         }
         function generateProblem() {
@@ -949,7 +995,6 @@
             if (checkedThemes.length === 0) checkedThemes = ['integers'];
             const theme = checkedThemes[Math.floor(Math.random() * checkedThemes.length)];
             currentThemeKey = theme;
-            
             const diff = document.querySelector('input[name="difficulty"]:checked').value;
             const op = getSelectedOperation();
             let opSign = op === '*' ? '×' : op === '/' ? '÷' : op;
@@ -1182,7 +1227,7 @@
             }
             recordAttempt(isCorrect, userDisplayStr);
             if (isCorrect) {
-                feedback.innerText = "Правильно! 🎉"; feedback.style.color = "var(--success)"; score++;
+                feedback.innerText = "Правильно!"; feedback.style.color = "var(--success)"; score++;
             } else {
                 feedback.innerText = `Ошибка! Правильно: ${getCorrectAnswerStr()}`; feedback.style.color = "var(--error)"; 
                 if (maxQuestions === Infinity) score = 0;
@@ -1191,7 +1236,10 @@
             document.getElementById('btn-action').innerText = 'Следующий пример';
             isAnswerChecked = true;
         }
-        window.onload = loadClassData;
+        window.onload = function() {
+            loadClassData();
+            checkUrlHashOnLoad();
+        };
     </script>
 </body>
 </html>
