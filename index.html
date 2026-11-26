@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tests</title>
+    <title>Мега-Генератор Тестов с Классом и Профилями</title>
     <style>
         :root {
             --bg-color: #f0f3f6;
@@ -12,6 +12,7 @@
             --primary-hover: #357abd;
             --success: #2ecc71;
             --error: #e74c3c;
+            --warning: #f39c12;
             --text: #2c3e50;
             --border: #dcdde1;
         }
@@ -41,7 +42,7 @@
             border-radius: 16px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.08);
             width: 100%;
-            max-width: 650px;
+            max-width: 680px;
             padding: 35px;
             box-sizing: border-box;
             position: relative;
@@ -76,14 +77,14 @@
         .btn-group {
             display: flex;
             flex-direction: column;
-            gap: 15px;
-            margin-top: 25px;
+            gap: 12px;
+            margin-top: 20px;
         }
         button:not(.theme-toggle-btn) {
             background-color: var(--primary);
             color: white;
             border: none;
-            padding: 15px 20px;
+            padding: 14px 20px;
             font-size: 16px;
             border-radius: 10px;
             cursor: pointer;
@@ -100,9 +101,20 @@
         button.secondary:hover {
             background-color: #7f8c8d;
         }
+        button.teacher-btn {
+            background-color: #8e44ad;
+        }
+        button.teacher-btn:hover {
+            background-color: #732d91;
+        }
+        button.danger-sm {
+            background-color: var(--error);
+            padding: 8px 12px;
+            font-size: 14px;
+        }
         .setting-item {
-            margin-bottom: 22px;
-            padding-bottom: 18px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
             border-bottom: 1px solid var(--border);
         }
         .setting-item label.main-label {
@@ -134,17 +146,26 @@
             cursor: pointer;
             font-size: 15px;
         }
-        .code-box {
+        .panel-box {
             background: var(--bg-color);
             padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
+            border-radius: 12px;
+            margin-bottom: 18px;
             border: 1px solid var(--border);
         }
-        .code-row {
+        .flex-row {
             display: flex;
             gap: 10px;
             align-items: center;
+        }
+        select, input[type="text"].std-input {
+            flex: 1;
+            padding: 12px;
+            font-size: 15px;
+            border-radius: 8px;
+            border: 2px solid var(--border);
+            background-color: var(--card-bg);
+            color: var(--text);
         }
         input[type="text"].code-input {
             flex: 1;
@@ -159,6 +180,15 @@
             background-color: var(--card-bg);
             color: var(--text);
             text-transform: uppercase;
+        }
+        .avg-pill {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+            color: white;
+            background: var(--primary);
         }
         .fraction {
             display: inline-flex;
@@ -180,7 +210,7 @@
             font-size: 22px;
             font-weight: bold;
             text-align: center;
-            margin: 35px 0;
+            margin: 30px 0;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -192,7 +222,7 @@
             justify-content: center;
             align-items: center;
             gap: 10px;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
         .answer-block input {
             width: 140px;
@@ -217,7 +247,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             margin-bottom: 15px;
             background: var(--border);
@@ -229,19 +259,19 @@
             font-size: 20px;
             font-weight: bold;
             min-height: 30px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         .grade-badge {
-            width: 90px;
-            height: 90px;
+            width: 85px;
+            height: 85px;
             border-radius: 50%;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 46px;
+            font-size: 44px;
             font-weight: bold;
             color: white;
-            margin: 15px auto;
+            margin: 10px auto;
             box-shadow: 0 6px 15px rgba(0,0,0,0.15);
         }
         .analytics-box {
@@ -249,14 +279,15 @@
             border-radius: 10px;
             padding: 15px;
             margin-top: 15px;
-            max-height: 280px;
+            max-height: 260px;
             overflow-y: auto;
             border: 1px solid var(--border);
         }
         .stat-row {
             display: flex;
             justify-content: space-between;
-            padding: 8px 0;
+            align-items: center;
+            padding: 10px 8px;
             border-bottom: 1px solid var(--border);
             font-size: 14px;
         }
@@ -268,31 +299,88 @@
             border-left: 4px solid var(--error);
             font-size: 14px;
         }
+        .student-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: transform 0.15s;
+        }
+        .student-card:hover {
+            transform: translateX(3px);
+            border-color: var(--primary);
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <button class="theme-toggle-btn" onclick="toggleTheme()">🌓 Тема</button>
+
+        <!-- ТИТУЛЬНЫЙ ЭКРАН -->
         <div id="screen-main" class="screen active">
-            <h1>Тренажер</h1>
-            <p style="text-align: center; opacity: 0.7; margin-bottom: 20px;">Настрой тест сам или введи готовый код пресета!</p>
-            <div class="code-box">
+            <h1>Универсальный Тренажер</h1>
+            
+            <div class="panel-box">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <label style="font-weight:700;">👤 Профиль ученика:</label>
+                    <span id="student-avg-badge" class="avg-pill">Ср. балл: —</span>
+                </div>
+                <div class="flex-row" style="margin-bottom:10px;">
+                    <select id="student-select" onchange="selectStudentProfile()"></select>
+                    <button onclick="createNewStudentPrompt()" style="padding: 12px 15px;" title="Добавить ученика">➕</button>
+                </div>
+                <div style="font-size:13px; opacity:0.75;" id="student-tests-info">Пройдено тестов с оценкой: 0</div>
+            </div>
+
+            <div class="panel-box">
                 <label style="display:block; font-weight:700; margin-bottom:8px;">🔑 Загрузить пресет по коду:</label>
-                <div class="code-row">
+                <div class="flex-row">
                     <input type="text" id="import-code-input" class="code-input" placeholder="Например: E-1-3-0-0-0">
                     <button onclick="importPresetCode()" style="padding: 12px 18px;">Загрузить</button>
                 </div>
             </div>
+
             <div class="btn-group">
                 <button onclick="switchScreen('screen-quiz'); startQuiz();">Решать тест</button>
                 <button class="secondary" onclick="switchScreen('screen-settings')">Настройки параметров</button>
+                <button class="teacher-btn" onclick="openTeacherPortal()">👨‍🏫 Кабинет учителя (Журнал класса)</button>
             </div>
         </div>
+
+        <!-- КАБИНЕТ УЧИТЕЛЯ -->
+        <div id="screen-teacher" class="screen">
+            <h2>👨‍🏫 Журнал класса</h2>
+            <div class="panel-box">
+                <label style="display:block; font-weight:700; margin-bottom:8px;">Добавить нового ученика в класс:</label>
+                <div class="flex-row">
+                    <input type="text" id="teacher-new-student" class="std-input" placeholder="Имя и фамилия ученика">
+                    <button onclick="addStudentFromTeacher()" style="padding: 12px 16px;">Добавить</button>
+                </div>
+            </div>
+            
+            <div id="class-roster-container" class="analytics-box" style="max-height: 320px;"></div>
+            
+            <div id="student-detail-modal" class="panel-box" style="display:none; margin-top:15px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <h3 id="detail-student-name" style="margin:0; font-size:18px;"></h3>
+                    <button class="danger-sm" onclick="deleteSelectedStudent()">Удалить ученика</button>
+                </div>
+                <div id="detail-student-history" style="max-height:180px; overflow-y:auto; font-size:14px;"></div>
+            </div>
+
+            <div class="btn-group">
+                <button class="secondary" onclick="switchScreen('screen-main')">Выйти из кабинета учителя</button>
+            </div>
+        </div>
+
+        <!-- ЭКРАН НАСТРОЕК -->
         <div id="screen-settings" class="screen">
             <h2>Настройки параметров</h2>
-            <div class="code-box">
+            <div class="panel-box">
                 <label style="display:block; font-weight:700; margin-bottom:8px;">📤 Код твоих текущих настроек (для переноса):</label>
-                <div class="code-row">
+                <div class="flex-row">
                     <input type="text" id="export-code-output" class="code-input" readonly placeholder="Нажми 'Создать код'">
                     <button onclick="generatePresetCode()" style="padding: 12px 16px;">Создать код</button>
                 </div>
@@ -306,7 +394,7 @@
                 </div>
             </div>
             <div class="setting-item">
-                <label class="main-label">Выберите темы:</label>
+                <label class="main-label">Выберите темы (можно несколько):</label>
                 <div class="radio-stack">
                     <label><input type="checkbox" class="theme-cb" value="integers" checked> 🔢 Целые числа</label>
                     <label><input type="checkbox" class="theme-cb" value="fractions"> 🥞 Обыкновенные дроби</label>
@@ -348,9 +436,8 @@
                 <label class="main-label">📝 Длина теста (вопросов):</label>
                 <div class="row-group">
                     <label><input type="radio" name="length-opt" value="inf" checked> Бесконечно</label>
-                    <label><input type="radio" name="length-opt" value="5"> 5</label>
-                    <label><input type="radio" name="length-opt" value="10"> 10</label>
-                    <label><input type="radio" name="length-opt" value="20"> 20</label>
+                    <label><input type="radio" name="length-opt" value="10"> 10 (на оценку)</label>
+                    <label><input type="radio" name="length-opt" value="20"> 20 (на оценку)</label>
                 </div>
             </div>
             <div class="setting-item">
@@ -364,9 +451,12 @@
                 <button onclick="saveAndExitSettings()">Применить и вернуться</button>
             </div>
         </div>
+
+        <!-- ЭКРАН РЕШЕНИЯ ТЕСТА -->
         <div id="screen-quiz" class="screen">
             <h2>Решение примеров</h2>
             <div class="score-board">
+                <div>Ученик: <span id="quiz-student-name">Гость</span></div>
                 <div>Вопрос: <span id="quest-count">0</span></div>
                 <div>Таймер: <span id="timer-display">--</span></div>
                 <div>Верно: <span id="score-count">0</span></div>
@@ -379,6 +469,7 @@
                 <button class="secondary" onclick="exitQuiz()">Выйти</button>
             </div>
         </div>
+        <!-- ЭКРАН РЕЗУЛЬТАТОВ -->
         <div id="screen-results" class="screen">
             <h2>Тест завершен!</h2>
             <div id="grade-badge" class="grade-badge">5</div>
@@ -389,6 +480,7 @@
             </div>
         </div>
     </div>
+
     <script>
         let currentAnswer = {};
         let score = 0;
@@ -401,6 +493,14 @@
         let currentQuestionText = '';
         let sessionStats = {};
         let sessionMistakes = [];
+
+        let classData = {
+            activeId: 'st_default',
+            students: [
+                { id: 'st_default', name: 'Ученик 1', history: [] }
+            ]
+        };
+        let inspectedStudentId = null;
 
         const themeNames = {
             integers: 'Целые числа',
@@ -421,6 +521,170 @@
             angles: 'Градусы и углы'
         };
 
+        function loadClassData() {
+            const raw = localStorage.getItem('math_trainer_class_v1');
+            if (raw) {
+                try {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && Array.isArray(parsed.students) && parsed.students.length > 0) {
+                        classData = parsed;
+                    }
+                } catch (e) {}
+            }
+            updateStudentUI();
+        }
+
+        function saveClassData() {
+            localStorage.setItem('math_trainer_class_v1', JSON.stringify(classData));
+            updateStudentUI();
+        }
+
+        function getStudentAvg(student) {
+            if (!student.history || student.history.length === 0) return null;
+            const sum = student.history.reduce((acc, item) => acc + item.grade, 0);
+            return (sum / student.history.length).toFixed(2);
+        }
+
+        function getAvgColor(avg) {
+            if (avg === null) return '#95a5a6';
+            const val = parseFloat(avg);
+            if (val >= 4.5) return 'var(--success)';
+            if (val >= 3.5) return '#3498db';
+            if (val >= 2.5) return 'var(--warning)';
+            return 'var(--error)';
+        }
+
+        function updateStudentUI() {
+            const select = document.getElementById('student-select');
+            select.innerHTML = '';
+            classData.students.forEach(st => {
+                const opt = document.createElement('option');
+                opt.value = st.id;
+                opt.innerText = st.name;
+                select.appendChild(opt);
+            });
+            select.value = classData.activeId;
+
+            const activeSt = classData.students.find(s => s.id === classData.activeId) || classData.students;
+            classData.activeId = activeSt.id;
+            const avg = getStudentAvg(activeSt);
+            const badge = document.getElementById('student-avg-badge');
+            badge.innerText = avg ? `Ср. балл: ${avg}` : 'Ср. балл: —';
+            badge.style.backgroundColor = getAvgColor(avg);
+            document.getElementById('student-tests-info').innerText = `Пройдено тестов с оценкой: ${activeSt.history.length}`;
+        }
+        function selectStudentProfile() {
+            classData.activeId = document.getElementById('student-select').value;
+            saveClassData();
+        }
+
+        function createNewStudentPrompt() {
+            const name = prompt("Введите имя и фамилию нового ученика:");
+            if (!name || !name.trim()) return;
+            const newSt = {
+                id: 'st_' + Date.now(),
+                name: name.trim(),
+                history: []
+            };
+            classData.students.push(newSt);
+            classData.activeId = newSt.id;
+            saveClassData();
+        }
+
+        function openTeacherPortal() {
+            const code = prompt("Введите пароль учителя для доступа к журналу класса:");
+            if (code === "1706") {
+                document.getElementById('student-detail-modal').style.display = 'none';
+                renderClassRoster();
+                switchScreen('screen-teacher');
+            } else if (code !== null) {
+                alert("Неверный пароль учителя!");
+            }
+        }
+
+        function addStudentFromTeacher() {
+            const input = document.getElementById('teacher-new-student');
+            const name = input.value.trim();
+            if (!name) return;
+            const newSt = {
+                id: 'st_' + Date.now(),
+                name: name,
+                history: []
+            };
+            classData.students.push(newSt);
+            input.value = '';
+            saveClassData();
+            renderClassRoster();
+        }
+
+        function renderClassRoster() {
+            const container = document.getElementById('class-roster-container');
+            container.innerHTML = '<div style="font-weight:700; margin-bottom:10px;">📋 Список учеников класса (нажмите для деталей):</div>';
+            classData.students.forEach(st => {
+                const avg = getStudentAvg(st);
+                const color = getAvgColor(avg);
+                const avgText = avg ? `Ср. балл: ${avg}` : 'Нет оценок';
+                const card = document.createElement('div');
+                card.className = 'student-card';
+                card.onclick = () => inspectStudent(st.id);
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-weight:bold; font-size:16px;">${st.name}</div>
+                            <div style="font-size:13px; opacity:0.7;">Сдано работ: ${st.history.length}</div>
+                        </div>
+                        <span class="avg-pill" style="background-color:${color};">${avgText}</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function inspectStudent(studentId) {
+            inspectedStudentId = studentId;
+            const st = classData.students.find(s => s.id === studentId);
+            if (!st) return;
+
+            document.getElementById('student-detail-modal').style.display = 'block';
+            document.getElementById('detail-student-name').innerText = `👤 ${st.name}`;
+            const histDiv = document.getElementById('detail-student-history');
+
+            if (st.history.length === 0) {
+                histDiv.innerHTML = '<div style="opacity:0.7;">Ученик еще не завершил ни одного теста на оценку (10 или 20 вопросов).</div>';
+                return;
+            }
+
+            histDiv.innerHTML = '';
+            st.history.slice().reverse().forEach(h => {
+                const gColor = h.grade === 5 ? 'var(--success)' : h.grade === 4 ? '#3498db' : h.grade === 3 ? 'var(--warning)' : 'var(--error)';
+                histDiv.innerHTML += `
+                    <div class="stat-row">
+                        <div>
+                            <div><b>${h.date}</b> — ${h.themes}</div>
+                            <div style="font-size:12px; opacity:0.8;">Верно: ${h.score}/${h.total} (${h.percent}%)</div>
+                        </div>
+                        <span class="avg-pill" style="background-color:${gColor}; font-size:16px;">${h.grade}</span>
+                    </div>
+                `;
+            });
+        }
+
+        function deleteSelectedStudent() {
+            if (classData.students.length <= 1) {
+                alert("В классе должен оставаться хотя бы один ученик!");
+                return;
+            }
+            const st = classData.students.find(s => s.id === inspectedStudentId);
+            if (confirm(`Удалить ученика "${st.name}" и все его оценки?`)) {
+                classData.students = classData.students.filter(s => s.id !== inspectedStudentId);
+                if (classData.activeId === inspectedStudentId) {
+                    classData.activeId = classData.students.id;
+                }
+                document.getElementById('student-detail-modal').style.display = 'none';
+                saveClassData();
+                renderClassRoster();
+            }
+        }
         function generatePresetCode() {
             const diffMap = { easy: 'E', medium: 'M', hard: 'H' };
             const diff = diffMap[document.querySelector('input[name="difficulty"]:checked').value];
@@ -483,6 +747,7 @@
                 alert("Код поврежден или содержит ошибку!");
                 return;
             }
+
             document.querySelector(`input[name="difficulty"][value="${diffVal}"]`).checked = true;
             document.querySelectorAll('.theme-cb').forEach((cb, index) => {
                 cb.checked = Boolean(themeMask & (1 << index));
@@ -525,7 +790,7 @@
             if (code === "1706") {
                 clearInterval(timerInterval);
                 switchScreen('screen-main');
-            } else {
+            } else if (code !== null) {
                 alert("Неверный код! Доступ заблокирован.");
             }
         }
@@ -542,6 +807,8 @@
             questionNumber = 0;
             sessionStats = {};
             sessionMistakes = [];
+            const activeSt = classData.students.find(s => s.id === classData.activeId) || classData.students;
+            document.getElementById('quiz-student-name').innerText = activeSt.name;
             const lenVal = document.querySelector('input[name="length-opt"]:checked').value;
             maxQuestions = lenVal === 'inf' ? Infinity : parseInt(lenVal);
             document.getElementById('score-count').innerText = score;
@@ -621,7 +888,23 @@
             let color = "var(--error)";
             if (percent >= 85) { grade = 5; color = "var(--success)"; }
             else if (percent >= 70) { grade = 4; color = "#3498db"; }
-            else if (percent >= 50) { grade = 3; color = "#f39c12"; }
+            else if (percent >= 50) { grade = 3; color = "var(--warning)"; }
+
+            const activeSt = classData.students.find(s => s.id === classData.activeId);
+            if (activeSt) {
+                const now = new Date();
+                const dateStr = now.toLocaleDateString('ru-RU') + ' ' + now.toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'});
+                const usedThemes = Object.keys(sessionStats).map(k => themeNames[k] || k).join(', ');
+                activeSt.history.push({
+                    date: dateStr,
+                    grade: grade,
+                    score: score,
+                    total: maxQuestions,
+                    percent: percent,
+                    themes: usedThemes
+                });
+                saveClassData();
+            }
 
             const badge = document.getElementById('grade-badge');
             badge.innerText = grade;
@@ -907,6 +1190,7 @@
             document.getElementById('btn-action').innerText = 'Следующий пример';
             isAnswerChecked = true;
         }
+        window.onload = loadClassData;
     </script>
 </body>
 </html>
