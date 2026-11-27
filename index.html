@@ -331,9 +331,12 @@
                 </div>
                 <div class="flex-row" style="margin-bottom:10px;">
                     <select id="student-select" onchange="selectStudentProfile()"></select>
-                    <button onclick="createNewStudentPrompt()" style="padding: 12px 15px;" title="Добавить ученика">+</button>
+                    <button onclick="createNewStudentPrompt()" style="padding: 12px 15px;" title="Создать профиль">+</button>
                 </div>
-                <div style="font-size:13px; opacity:0.75;" id="student-tests-info">Пройдено тестов с оценкой: 0</div>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <div style="font-size:13px; opacity:0.75;" id="student-tests-info">Пройдено тестов с оценкой: 0</div>
+                    <button onclick="exportStudentSyncCode()" style="padding: 8px 12px; font-size:13px; background-color:#2c3e50;">Код моих оценок</button>
+                </div>
             </div>
 
             <div class="panel-box">
@@ -355,26 +358,34 @@
         <div id="screen-teacher" class="screen">
             <h2>Журнал класса</h2>
             <div class="panel-box">
-                <label style="display:block; font-weight:700; margin-bottom:8px;">Добавить учеников в класс (по фамилиям, каждый с новой строки):</label>
-                <textarea id="teacher-new-student" class="std-input" rows="4" style="width:100%; box-sizing:border-box; margin-bottom:10px; font-family:inherit; resize:vertical;" placeholder="Иванов&#10;Петрова&#10;Сидоров"></textarea>
-                <button onclick="addStudentFromTeacher()" style="width:100%; padding: 12px 16px;">Добавить в класс</button>
+                <label style="display:block; font-weight:700; margin-bottom:8px;">Выбор или создание класса:</label>
+                <div class="flex-row" style="margin-bottom:10px;">
+                    <select id="teacher-class-select" onchange="selectTeacherClass()"></select>
+                    <button onclick="createNewClassPrompt()" style="padding: 12px 14px; font-size:14px;">+ Класс</button>
+                    <button class="danger-sm" onclick="deleteCurrentClass()" style="padding: 12px 14px;">Удалить класс</button>
+                </div>
+                <label style="display:block; font-weight:700; margin-bottom:8px; margin-top:12px;">Добавить учеников в класс по фамилии (каждый с новой строки):</label>
+                <textarea id="teacher-new-student" class="std-input" rows="3" style="width:100%; box-sizing:border-box; margin-bottom:10px; font-family:inherit; resize:vertical;" placeholder="Андреев&#10;Иванов&#10;Петрова"></textarea>
+                <div class="flex-row">
+                    <button onclick="addStudentToClassBySurname()" style="flex:1; padding: 12px 14px;">Добавить в класс по фамилии</button>
+                    <button onclick="importStudentSyncCode()" style="padding: 12px 14px; background-color:#2c3e50;">Загрузить код ученика</button>
+                </div>
             </div>
             
-            <div id="class-roster-container" class="analytics-box" style="max-height: 320px;"></div>
+            <div id="class-roster-container" class="analytics-box" style="max-height: 290px;"></div>
             
             <div id="student-detail-modal" class="panel-box" style="display:none; margin-top:15px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                     <h3 id="detail-student-name" style="margin:0; font-size:18px;"></h3>
-                    <button class="danger-sm" onclick="deleteSelectedStudent()">Удалить ученика</button>
+                    <button class="danger-sm" onclick="removeStudentFromClass()">Убрать из класса</button>
                 </div>
-                <div id="detail-student-history" style="max-height:180px; overflow-y:auto; font-size:14px;"></div>
+                <div id="detail-student-history" style="max-height:170px; overflow-y:auto; font-size:14px;"></div>
             </div>
 
             <div class="btn-group">
                 <button class="secondary" onclick="switchScreen('screen-main')">Выйти из кабинета учителя</button>
             </div>
         </div>
-
         <!-- ЭКРАН НАСТРОЕК -->
         <div id="screen-settings" class="screen">
             <h2>Настройки параметров</h2>
@@ -453,7 +464,6 @@
                 <button onclick="saveAndExitSettings()">Применить и вернуться</button>
             </div>
         </div>
-
         <!-- ЭКРАН РЕШЕНИЯ ТЕСТА -->
         <div id="screen-quiz" class="screen">
             <h2>Решение примеров</h2>
@@ -471,6 +481,7 @@
                 <button class="secondary" onclick="exitQuiz()">Выйти</button>
             </div>
         </div>
+
         <!-- ЭКРАН РЕЗУЛЬТАТОВ -->
         <div id="screen-results" class="screen">
             <h2>Тест завершен!</h2>
@@ -512,7 +523,11 @@
 
         let classData = {
             activeId: '',
-            students: []
+            students: [],
+            activeClassId: 'cls_default',
+            classes: [
+                { id: 'cls_default', name: '7А', studentIds: [] }
+            ]
         };
         let inspectedStudentId = null;
 
@@ -536,32 +551,38 @@
         };
 
         function loadClassData() {
-            const raw = localStorage.getItem('math_trainer_class_v1');
+            const raw = localStorage.getItem('math_trainer_class_v2');
             let loaded = false;
             if (raw) {
                 try {
                     const parsed = JSON.parse(raw);
                     if (parsed && Array.isArray(parsed.students) && parsed.students.length > 0) {
                         classData = parsed;
+                        if (!Array.isArray(classData.classes) || classData.classes.length === 0) {
+                            classData.classes = [{ id: 'cls_default', name: '7А', studentIds: [] }];
+                            classData.activeClassId = 'cls_default';
+                        }
                         loaded = true;
                     }
                 } catch (e) {}
             }
             if (!loaded) {
-                const enteredName = prompt("Добро пожаловать! Введите ваше имя и фамилию:");
+                const enteredName = prompt("Добро пожаловать! Введите вашу фамилию и имя (например: Андреев Даниил):");
                 const finalName = (enteredName && enteredName.trim()) ? enteredName.trim() : "Ученик";
                 const firstId = 'st_' + Date.now();
                 classData = {
                     activeId: firstId,
-                    students: [{ id: firstId, name: finalName, history: [] }]
+                    students: [{ id: firstId, name: finalName, history: [] }],
+                    activeClassId: 'cls_default',
+                    classes: [{ id: 'cls_default', name: '7А', studentIds: [] }]
                 };
-                localStorage.setItem('math_trainer_class_v1', JSON.stringify(classData));
+                localStorage.setItem('math_trainer_class_v2', JSON.stringify(classData));
             }
             updateStudentUI();
         }
 
         function saveClassData() {
-            localStorage.setItem('math_trainer_class_v1', JSON.stringify(classData));
+            localStorage.setItem('math_trainer_class_v2', JSON.stringify(classData));
             updateStudentUI();
         }
 
@@ -599,13 +620,14 @@
             badge.style.backgroundColor = getAvgColor(avg);
             document.getElementById('student-tests-info').innerText = `Пройдено тестов с оценкой: ${activeSt.history.length}`;
         }
+
         function selectStudentProfile() {
             classData.activeId = document.getElementById('student-select').value;
             saveClassData();
         }
 
         function createNewStudentPrompt() {
-            const name = prompt("Введите имя и фамилию нового ученика:");
+            const name = prompt("Введите фамилию и имя ученика (например: Андреев Даниил):");
             if (!name || !name.trim()) return;
             const newSt = {
                 id: 'st_' + Date.now(),
@@ -617,10 +639,69 @@
             saveClassData();
         }
 
+        function exportStudentSyncCode() {
+            const activeSt = classData.students.find(s => s.id === classData.activeId);
+            if (!activeSt) return;
+            const payload = {
+                n: activeSt.name,
+                h: activeSt.history.map(item => ({
+                    d: item.date,
+                    g: item.grade,
+                    s: item.score,
+                    t: item.total,
+                    p: item.percent,
+                    m: item.themes
+                }))
+            };
+            const encoded = btoa(encodeURIComponent(JSON.stringify(payload)));
+            prompt(`Код профиля "${activeSt.name}" для передачи учителю:`, encoded);
+        }
+
+        function importStudentSyncCode() {
+            const code = prompt("Вставьте код оценок, который передал ученик:");
+            if (!code || !code.trim()) return;
+            try {
+                const decoded = JSON.parse(decodeURIComponent(atob(code.trim())));
+                if (!decoded || !decoded.n || !Array.isArray(decoded.h)) {
+                    alert("Неверный код ученика!");
+                    return;
+                }
+                const normName = decoded.n.trim().toLowerCase();
+                let existing = classData.students.find(s => s.name.trim().toLowerCase() === normName);
+                const mappedHistory = decoded.h.map(item => ({
+                    date: item.d,
+                    grade: item.g,
+                    score: item.s,
+                    total: item.t,
+                    percent: item.p,
+                    themes: item.m
+                }));
+                if (existing) {
+                    existing.history = mappedHistory;
+                } else {
+                    existing = {
+                        id: 'st_' + Date.now(),
+                        name: decoded.n.trim(),
+                        history: mappedHistory
+                    };
+                    classData.students.push(existing);
+                }
+                const activeCls = classData.classes.find(c => c.id === classData.activeClassId);
+                if (activeCls && !activeCls.studentIds.includes(existing.id)) {
+                    activeCls.studentIds.push(existing.id);
+                }
+                saveClassData();
+                renderClassRoster();
+                alert(`Профиль "${existing.name}" загружен и добавлен в текущий класс!`);
+            } catch (e) {
+                alert("Ошибка расшифровки кода ученика!");
+            }
+        }
         function openTeacherPortal() {
             const code = prompt("Введите пароль учителя для доступа к журналу класса:");
             if (code === "1706") {
                 document.getElementById('student-detail-modal').style.display = 'none';
+                renderTeacherClasses();
                 renderClassRoster();
                 switchScreen('screen-teacher');
             } else if (code !== null) {
@@ -628,27 +709,107 @@
             }
         }
 
-        function addStudentFromTeacher() {
-            const input = document.getElementById('teacher-new-student');
-            const rawText = input.value;
-            const namesList = rawText.split(/[\n,;]+/).map(n => n.trim()).filter(n => n.length > 0);
-            if (namesList.length === 0) return;
-            namesList.forEach((name, idx) => {
-                classData.students.push({
-                    id: 'st_' + Date.now() + '_' + idx,
-                    name: name,
-                    history: []
-                });
+        function renderTeacherClasses() {
+            const select = document.getElementById('teacher-class-select');
+            select.innerHTML = '';
+            classData.classes.forEach(cls => {
+                const opt = document.createElement('option');
+                opt.value = cls.id;
+                opt.innerText = `Класс ${cls.name}`;
+                select.appendChild(opt);
             });
-            input.value = '';
+            select.value = classData.activeClassId;
+        }
+
+        function selectTeacherClass() {
+            classData.activeClassId = document.getElementById('teacher-class-select').value;
+            document.getElementById('student-detail-modal').style.display = 'none';
             saveClassData();
             renderClassRoster();
         }
 
+        function createNewClassPrompt() {
+            const clsName = prompt("Введите номер и букву класса (например: 8Б или 9А):");
+            if (!clsName || !clsName.trim()) return;
+            const newCls = {
+                id: 'cls_' + Date.now(),
+                name: clsName.trim().toUpperCase(),
+                studentIds: []
+            };
+            classData.classes.push(newCls);
+            classData.activeClassId = newCls.id;
+            saveClassData();
+            renderTeacherClasses();
+            renderClassRoster();
+        }
+
+        function deleteCurrentClass() {
+            if (classData.classes.length <= 1) {
+                alert("Должен оставаться хотя бы один класс!");
+                return;
+            }
+            const activeCls = classData.classes.find(c => c.id === classData.activeClassId);
+            if (confirm(`Удалить класс "${activeCls.name}"?`)) {
+                classData.classes = classData.classes.filter(c => c.id !== classData.activeClassId);
+                classData.activeClassId = classData.classes.at(0).id;
+                saveClassData();
+                renderTeacherClasses();
+                renderClassRoster();
+            }
+        }
+
+        function addStudentToClassBySurname() {
+            const input = document.getElementById('teacher-new-student');
+            const queries = input.value.split(/[\n,;]+/).map(n => n.trim()).filter(n => n.length > 0);
+            if (queries.length === 0) return;
+
+            const activeCls = classData.classes.find(c => c.id === classData.activeClassId);
+            if (!activeCls) return;
+
+            let addedCount = 0;
+            let notFound = [];
+
+            queries.forEach(q => {
+                const lowQ = q.toLowerCase();
+                const matched = classData.students.filter(st => {
+                    const parts = st.name.toLowerCase().split(/\s+/);
+                    return parts.includes(lowQ) || st.name.toLowerCase().startsWith(lowQ);
+                });
+                if (matched.length > 0) {
+                    matched.forEach(m => {
+                        if (!activeCls.studentIds.includes(m.id)) {
+                            activeCls.studentIds.push(m.id);
+                            addedCount++;
+                        }
+                    });
+                } else {
+                    notFound.push(q);
+                }
+            });
+
+            input.value = '';
+            saveClassData();
+            renderClassRoster();
+
+            if (notFound.length > 0) {
+                alert(`Добавлено в класс ${activeCls.name}: ${addedCount}.\nНе найдены профили по фамилии: ${notFound.join(', ')}.\n(Ученик должен сначала создать профиль у себя или передать код оценок).`);
+            }
+        }
         function renderClassRoster() {
             const container = document.getElementById('class-roster-container');
-            container.innerHTML = '<div style="font-weight:700; margin-bottom:10px;">📋 Список учеников класса (нажмите для деталей):</div>';
-            classData.students.forEach(st => {
+            const activeCls = classData.classes.find(c => c.id === classData.activeClassId) || classData.classes.at(0);
+            container.innerHTML = `<div style="font-weight:700; margin-bottom:10px;">📋 Ученики класса ${activeCls.name} (нажмите для деталей):</div>`;
+            
+            const classStudents = activeCls.studentIds
+                .map(id => classData.students.find(s => s.id === id))
+                .filter(Boolean);
+
+            if (classStudents.length === 0) {
+                container.innerHTML += '<div style="opacity:0.7; font-size:14px;">В этом классе пока нет учеников. Введите фамилию выше, чтобы добавить профиль ученика.</div>';
+                return;
+            }
+
+            classStudents.forEach(st => {
                 const avg = getStudentAvg(st);
                 const color = getAvgColor(avg);
                 const avgText = avg ? `Ср. балл: ${avg}` : 'Нет оценок';
@@ -697,17 +858,12 @@
             });
         }
 
-        function deleteSelectedStudent() {
-            if (classData.students.length <= 1) {
-                alert("В классе должен оставаться хотя бы один ученик!");
-                return;
-            }
+        function removeStudentFromClass() {
+            const activeCls = classData.classes.find(c => c.id === classData.activeClassId);
             const st = classData.students.find(s => s.id === inspectedStudentId);
-            if (confirm(`Удалить ученика "${st.name}" и все его оценки?`)) {
-                classData.students = classData.students.filter(s => s.id !== inspectedStudentId);
-                if (classData.activeId === inspectedStudentId) {
-                    classData.activeId = classData.students.at(0).id;
-                }
+            if (!activeCls || !st) return;
+            if (confirm(`Убрать ученика "${st.name}" из класса ${activeCls.name}?`)) {
+                activeCls.studentIds = activeCls.studentIds.filter(id => id !== inspectedStudentId);
                 document.getElementById('student-detail-modal').style.display = 'none';
                 saveClassData();
                 renderClassRoster();
@@ -1255,7 +1411,7 @@
                 }
             }
             recordAttempt(isCorrect, userDisplayStr);
-            if (isCorrect) {
+                       if (isCorrect) {
                 feedback.innerText = "Правильно!"; feedback.style.color = "var(--success)"; score++;
             } else {
                 feedback.innerText = `Ошибка! Правильно: ${getCorrectAnswerStr()}`; feedback.style.color = "var(--error)"; 
@@ -1272,3 +1428,4 @@
     </script>
 </body>
 </html>
+
