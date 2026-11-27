@@ -823,12 +823,14 @@
             }
         }
         window.addEventListener('hashchange', checkHashAndLaunch);
-        function toggleTheme() {
+                function toggleTheme() {
             const currentTheme = document.documentElement.getAttribute('data-theme');
             if (currentTheme === 'dark') {
                 document.documentElement.removeAttribute('data-theme');
+                localStorage.setItem('math_trainer_theme', 'light');
             } else {
                 document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('math_trainer_theme', 'dark');
             }
         }
         function switchScreen(screenId) {
@@ -1253,10 +1255,10 @@
             isAnswerChecked = true;
         }
         window.onload = function() {
+            if (localStorage.getItem('math_trainer_theme') === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
             loadClassData();
             checkHashAndLaunch();
         };
-    </script>
-</body>
-</html>
 
