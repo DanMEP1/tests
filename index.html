@@ -355,11 +355,9 @@
         <div id="screen-teacher" class="screen">
             <h2>Журнал класса</h2>
             <div class="panel-box">
-                <label style="display:block; font-weight:700; margin-bottom:8px;">Добавить нового ученика в класс:</label>
-                <div class="flex-row">
-                    <input type="text" id="teacher-new-student" class="std-input" placeholder="Имя и фамилия ученика">
-                    <button onclick="addStudentFromTeacher()" style="padding: 12px 16px;">Добавить</button>
-                </div>
+                <label style="display:block; font-weight:700; margin-bottom:8px;">Добавить учеников в класс (по фамилиям, каждый с новой строки):</label>
+                <textarea id="teacher-new-student" class="std-input" rows="4" style="width:100%; box-sizing:border-box; margin-bottom:10px; font-family:inherit; resize:vertical;" placeholder="Иванов&#10;Петрова&#10;Сидоров"></textarea>
+                <button onclick="addStudentFromTeacher()" style="width:100%; padding: 12px 16px;">Добавить в класс</button>
             </div>
             
             <div id="class-roster-container" class="analytics-box" style="max-height: 320px;"></div>
@@ -513,10 +511,8 @@
         let sessionMistakes = [];
 
         let classData = {
-            activeId: 'st_default',
-            students: [
-                { id: 'st_default', name: 'Ученик 1', history: [] }
-            ]
+            activeId: '',
+            students: []
         };
         let inspectedStudentId = null;
 
@@ -541,13 +537,25 @@
 
         function loadClassData() {
             const raw = localStorage.getItem('math_trainer_class_v1');
+            let loaded = false;
             if (raw) {
                 try {
                     const parsed = JSON.parse(raw);
                     if (parsed && Array.isArray(parsed.students) && parsed.students.length > 0) {
                         classData = parsed;
+                        loaded = true;
                     }
                 } catch (e) {}
+            }
+            if (!loaded) {
+                const enteredName = prompt("Добро пожаловать! Введите ваше имя и фамилию:");
+                const finalName = (enteredName && enteredName.trim()) ? enteredName.trim() : "Ученик";
+                const firstId = 'st_' + Date.now();
+                classData = {
+                    activeId: firstId,
+                    students: [{ id: firstId, name: finalName, history: [] }]
+                };
+                localStorage.setItem('math_trainer_class_v1', JSON.stringify(classData));
             }
             updateStudentUI();
         }
@@ -622,14 +630,16 @@
 
         function addStudentFromTeacher() {
             const input = document.getElementById('teacher-new-student');
-            const name = input.value.trim();
-            if (!name) return;
-            const newSt = {
-                id: 'st_' + Date.now(),
-                name: name,
-                history: []
-            };
-            classData.students.push(newSt);
+            const rawText = input.value;
+            const namesList = rawText.split(/[\n,;]+/).map(n => n.trim()).filter(n => n.length > 0);
+            if (namesList.length === 0) return;
+            namesList.forEach((name, idx) => {
+                classData.students.push({
+                    id: 'st_' + Date.now() + '_' + idx,
+                    name: name,
+                    history: []
+                });
+            });
             input.value = '';
             saveClassData();
             renderClassRoster();
